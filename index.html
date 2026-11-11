@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>FLIP</title>
+<style>
+ *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%}
+html{scrollbar-width:none}
+html::-webkit-scrollbar{width:0;height:0;display:none}
+ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  user-select:none;touch-action:manipulation;color:#1D1D1F;padding:12px;min-height:100vh}
+ body::before,body::after{content:'';position:fixed;inset:0;z-index:-1;transition:opacity .8s}
+ body::before{background:#F5F5F7;opacity:1}
+ body::after{background:#000000;opacity:0}
+ body.deep::before{opacity:0}
+ body.deep::after{opacity:1}
+ body.deep{color:#F5F5F7}
+ .topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+ h1{font-size:19px;font-weight:600;letter-spacing:2px;color:#1D1D1F;transition:color .8s}
+ body.deep h1{color:#F5F5F7}
+ h1 span{font-size:11px;color:#86868B;font-weight:500;letter-spacing:2px}
+ body.deep h1 span{color:#98989F}
+ .lvlchip{padding:4px 12px;border-radius:99px;font-size:12px;cursor:pointer;
+  background:#FFFFFF;border:1px solid #D2D2D7;color:#1D1D1F;transition:background .5s,color .5s}
+body.deep .lvlchip{background:#2C2C2E;border-color:#3A3A3C;color:#F2F2F2}
+ .mtabs{display:flex;background:#FFFFFF;border:1px solid #D2D2D7;border-radius:99px;padding:2px;
+  transition:background .5s,border-color .5s}
+ .mtabs button{border:0;border-radius:99px;padding:3px 11px;font-size:11px;font-weight:600;cursor:pointer;
+  background:transparent;color:#86868B;transition:background .3s,color .3s}
+ .mtabs button.on{background:#1D1D1F;color:#FFFFFF}
+ body.deep .mtabs{background:#1C1C1E;border-color:#3A3A3C}
+ body.deep .mtabs button{color:#98989F}
+ body.deep .mtabs button.on{background:#48484E;color:#F5F5F7}
+ .status.hintst{color:#1D1D1F;font-weight:600}
+ body.deep .status.hintst{color:#FFFFFF}
+ .scene{perspective:1100px;width:min(92vw,378px,calc(100vh - 185px));position:relative}
+ .scene.n4{width:min(86vw,334px,calc(100vh - 185px))}
+ .scene.n6{width:min(94vw,440px,calc(100vh - 185px))}
+ .scene.n8{width:min(94vw,470px,calc(100vh - 185px))}
+ .scene.n10{width:min(95vw,505px,calc(100vh - 185px))}
+ .scene.n12{width:min(96vw,540px,calc(100vh - 185px))}
+ .ripple{position:absolute;left:50%;top:50%;width:30px;height:30px;border-radius:50%;
+  border:3px solid #007AFF88;transform:translate(-50%,-50%);opacity:0;pointer-events:none;z-index:0}
+ .ripple.go{animation:rip .75s ease-out}
+ @keyframes rip{0%{opacity:.9;transform:translate(-50%,-50%) scale(.6)}100%{opacity:0;transform:translate(-50%,-50%) scale(18)}}
+ .card{position:relative;width:100%;transform-style:preserve-3d;
+  transition:transform .6s cubic-bezier(.45,.05,.2,1)}
+ .card.flipped{transform:rotateX(180deg)}
+ .face{display:grid;gap:3px;padding:10px;border-radius:24px;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden}
+ .face.day{background:#FFFFFF;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+ .face.night{position:absolute;inset:0;transform:rotateX(180deg);
+  background:#1C1C1E;box-shadow:0 8px 32px rgba(0,0,0,.6);pointer-events:none}
+ .card.flipped .face.night{pointer-events:auto}
+ .card.flipped .face.day{pointer-events:none}
+ .cell{aspect-ratio:1;position:relative;transition:transform .08s;cursor:pointer;
+  border-radius:14%;touch-action:none}
+ .cell:active{transform:scale(.96)}
+ .face.day .cell{background:var(--day)}
+ .face.night .cell{background:var(--ngt);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+ .pad{position:absolute;left:50%;top:50%;width:56%;height:56%;transform:translate(-50%,-50%);
+  border-radius:50%;z-index:4;animation:padin .2s ease}
+ .face.day .pad{background:radial-gradient(circle at 35% 30%,#FFFFFF,#EDEDF0);
+  box-shadow:0 1px 3px rgba(0,0,0,.18),inset 0 0 0 .5px rgba(0,0,0,.06)}
+ .face.night .pad{background:radial-gradient(circle at 35% 30%,#3A3A3C,#151517);
+  box-shadow:0 1px 3px rgba(0,0,0,.35),inset 0 0 0 .5px rgba(255,255,255,.10)}
+ @keyframes padin{from{transform:translate(-50%,-50%) scale(.3)}to{transform:translate(-50%,-50%) scale(1)}}
+ .x{position:absolute;left:50%;top:50%;width:54%;height:54%;transform:translate(-50%,-50%);
+  z-index:4;animation:xfade .16s ease}
+ .x::before,.x::after{content:'';position:absolute;left:50%;top:50%;width:100%;height:24%;
+  border-radius:99px;transform:translate(-50%,-50%) rotate(45deg);
+  background:linear-gradient(180deg,#5E5E63,#2E2E32);box-shadow:0 1px 2px rgba(0,0,0,.22)}
+ .x::after{transform:translate(-50%,-50%) rotate(-45deg)}
+ .face.night .x::before,.face.night .x::after{background:linear-gradient(180deg,#FFFFFF,#C7C7CC);
+  box-shadow:0 1px 2px rgba(0,0,0,.35)}
+ @keyframes xfade{from{opacity:0;transform:translate(-50%,-50%) scale(.35)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+ .cell.bad{outline:2.5px solid #FF3B30;outline-offset:-2.5px}
+ .lbl{position:absolute;font-size:9px;font-weight:700;z-index:2}
+ .n8 .lbl{font-size:7px}
+ .n10 .lbl,.n12 .lbl{font-size:6px}
+ .n12 .pad{width:62%;height:62%}
+ .face.day .lbl{left:4px;top:2px;color:rgba(0,0,0,.30)}
+ .face.night .lbl{right:4px;bottom:2px;color:rgba(255,255,255,.40)}
+ .face.day .cell.hint .lbl,.face.day .cell.exclh .lbl{color:#1D1D1F;font-weight:800}
+ .face.night .cell.hint .lbl,.face.night .cell.exclh .lbl{color:#FFFFFF;font-weight:800}
+ .cell.hint::after{content:'';position:absolute;inset:15%;border-radius:50%;border:4px solid #2E2E32;
+  z-index:5;pointer-events:none;
+  animation:hintIn .32s cubic-bezier(.25,.9,.3,1.15) both,breath 1.3s .34s ease-in-out infinite}
+ .face.night .cell.hint::after{border-color:#FFFFFF}
+ .cell.exclh::after{content:'';position:absolute;inset:19%;border-radius:50%;border:4px dashed #2E2E32;
+  z-index:5;pointer-events:none;
+  animation:hintIn .32s cubic-bezier(.25,.9,.3,1.15) both,breath 1.3s .34s ease-in-out infinite}
+ .face.night .cell.exclh::after{border-color:#FFFFFF}
+ .n12 .cell.hint::after{inset:20%}
+ .n12 .cell.exclh::after{inset:24%}
+ @keyframes hintIn{0%{transform:scale(1.5);opacity:0}55%{opacity:1}100%{transform:scale(1);opacity:.55}}
+ @keyframes breath{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.04)}}
+ .mrip{position:absolute;inset:4%;border-radius:12px;border:2px solid #007AFF99;
+  pointer-events:none;z-index:6;animation:mrip .45s ease-out forwards}
+ .face.night .mrip{border-color:#64AFFF99}
+ @keyframes mrip{from{opacity:.85;transform:scale(.55)}to{opacity:0;transform:scale(1.16)}}
+ .btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+ .btns button{padding:7px 13px;border:0;border-radius:99px;cursor:pointer;font-size:12.5px;font-weight:600;
+  background:#E9E9EB;color:#1D1D1F;transition:background .5s,color .5s}
+  .btns button:active{transform:scale(.95)}
+  .btns button.off{opacity:.45;filter:grayscale(1)}
+ #flipBtn{padding:9px 22px;font-size:14px;background:#007AFF;color:#FFFFFF}
+ body.deep .btns button{background:#2C2C2E;color:#F2F2F2}
+ body.deep #flipBtn{background:#0A84FF;color:#FFFFFF}
+ #flipBtn.urge{animation:urge 1.5s ease-in-out infinite}
+ @keyframes urge{0%,100%{box-shadow:0 3px 14px #007AFF40}50%{box-shadow:0 3px 26px #007AFFb0;transform:translateY(-1px)}}
+ .dots{display:flex;gap:5px;height:8px;align-items:center}
+ .dot{width:7px;height:7px;border-radius:50%;background:#D1D1D6;transition:background .3s,transform .3s}
+ .dot.on{background:#007AFF;transform:scale(1.2)}
+ body.deep .dot{background:#3A3A3C}
+body.deep .dot.on{box-shadow:0 0 0 1.5px rgba(255,255,255,.45)}
+ .qbtn{width:26px;height:26px;border-radius:50%;border:0;cursor:pointer;font-size:14px;font-weight:600;
+  background:#E9E9EB;color:#1D1D1F;line-height:1;padding:0;transition:background .5s,color .5s}
+ body.deep .qbtn{background:#2C2C2E;color:#F2F2F2}
+ .tut{position:fixed;inset:0;background:#1D1D1Fd9;display:flex;align-items:center;justify-content:center;
+  z-index:11;opacity:0;pointer-events:none;transition:opacity .4s}
+ .tut.show{opacity:1;pointer-events:auto}
+ .tut .wrap{width:min(94vw,432px);max-height:88vh;display:flex;flex-direction:column;
+  background:#F5F5F7;border-radius:22px;box-shadow:0 16px 50px rgba(0,0,0,.5);overflow:hidden}
+ .tut .thead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px}
+ .tut .thead h3{color:#1D1D1F;font-size:16px;letter-spacing:2px}
+ .tut .xbtn{width:28px;height:28px;border-radius:50%;border:0;background:#E9E9EB;color:#1D1D1F;
+  font-size:13px;font-weight:600;cursor:pointer;line-height:1;padding:0}
+ .tut .ttabs{display:flex;gap:6px;padding:0 16px 9px}
+ .tut .ttabs button{flex:1;padding:7px 0;border:0;border-radius:11px;background:#E9E9EB;color:#86868B;
+  font-size:12.5px;font-weight:600;cursor:pointer;transition:background .2s,color .2s}
+ .tut .ttabs button.on{background:#1D1D1F;color:#FFFFFF}
+ .tut .tbody{overflow:auto;padding:6px 12px 12px;display:flex;flex-direction:column;gap:10px;scrollbar-width:none}
+ .tut .tbody::-webkit-scrollbar{width:0;height:0;display:none}
+ .tut .tfoot{padding:10px 16px 14px}
+ .tut .go{width:100%;padding:11px 0;border:0;border-radius:14px;background:#0A84FF;color:#FFFFFF;
+  font-size:14px;font-weight:600;cursor:pointer}
+ .tut p{color:#6E6E73;font-size:12px;line-height:1.7;margin:2px 2px 0}
+ .tut p b{color:#1D1D1F}
+ .tpanel{background:#FFFFFF;border-radius:14px;padding:11px;box-shadow:0 1px 6px rgba(0,0,0,.05);
+  display:flex;gap:12px;align-items:center}
+ .tpanel.wide{flex-direction:column;align-items:stretch}
+ .tpanel .txt{flex:1;min-width:0}
+ .tpanel h4{color:#1D1D1F;font-size:12.5px;margin-bottom:5px}
+  .trow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:7px}
+  .tcol{display:flex;flex-direction:column;gap:10px;flex:none}
+ .tcap{font-size:10.5px;color:#86868B;line-height:1.6}
+ .tpanel.wide h4{text-align:center}
+ .tpanel.wide .tcap{text-align:center}
+ .tboard{display:grid;gap:2px;padding:6px;border-radius:11px;background:#FFFFFF;
+  box-shadow:0 2px 10px rgba(0,0,0,.12);flex:none;position:relative}
+ .tboard.dark{background:#1C1C1E;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+ .tboard .cell{position:relative;width:25px;height:25px;border-radius:14%}
+ .tboard .pad,.tboard .x{animation:none}
+ .tboard .pad{background:radial-gradient(circle at 35% 30%,#FFFFFF,#EDEDF0);
+  box-shadow:0 1px 3px rgba(0,0,0,.18),inset 0 0 0 .5px rgba(0,0,0,.06)}
+ .tboard.dark .cell{box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+ .tboard.dark .pad{background:radial-gradient(circle at 35% 30%,#3A3A3C,#151517);
+  box-shadow:0 1px 3px rgba(0,0,0,.35),inset 0 0 0 .5px rgba(255,255,255,.10)}
+ .tboard.dark .x::before,.tboard.dark .x::after{background:linear-gradient(180deg,#FFFFFF,#C7C7CC);
+  box-shadow:0 1px 2px rgba(0,0,0,.35)}
+ .tboard .cell.tring::after{content:'';position:absolute;inset:6%;border-radius:50%;
+  border:2px solid #0A84FF;z-index:6;pointer-events:none}
+ .tboard.s .cell{width:17px;height:17px}
+ .tboard .x.pop{animation:xfade .18s ease}
+ .tboard .x.fade{transition:opacity .4s;opacity:0}
+ .dfg{position:absolute;width:18px;height:18px;border-radius:50%;
+  background:rgba(29,29,31,.72);box-shadow:0 0 0 5px rgba(29,29,31,.22);opacity:0;
+  transition:opacity .3s;z-index:7;pointer-events:none}
+ .status{font-size:13px;color:#6E6E73;min-height:18px;text-align:center;transition:color .8s}
+ body.deep .status{color:#98989F}
+ .status.err{color:#FF3B30}
+ body.deep .status.err{color:#FF453A}
+ .status.ok{color:#34C759;font-weight:600}
+ body.deep .status.ok{color:#30D158}
+ .win{position:fixed;inset:0;background:#1D1D1Fee;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:13px;z-index:9;opacity:0;pointer-events:none;transition:opacity .5s}
+ .win.show{opacity:1;pointer-events:auto}
+ .win .emblem{display:flex;align-items:center;gap:9px}
+ .win .mb{display:grid;padding:5px;border-radius:9px;position:relative}
+ .win .mbd{background:#F5F5F7;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+ .win .mbn{background:#1C1C1E;box-shadow:0 4px 14px rgba(0,0,0,.65)}
+ .win .mbc{border-radius:14%;position:relative}
+ .win .mbn .mbc{box-shadow:inset 0 0 0 .5px rgba(255,255,255,.06)}
+ .win .mbp{position:absolute;inset:19%;border-radius:50%}
+ .win .mbd .mbp{background:radial-gradient(circle at 35% 30%,#FFFFFF,#EDEDF0);
+  box-shadow:0 1px 2px rgba(0,0,0,.2),inset 0 0 0 .5px rgba(0,0,0,.06)}
+ .win .mbn .mbp{background:radial-gradient(circle at 35% 30%,#3A3A3C,#151517);
+  box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 0 0 .5px rgba(255,255,255,.10)}
+ .win .mbk{position:absolute;right:-6px;top:-6px;width:17px;height:17px;border-radius:50%;background:#0A84FF;
+  color:#FFFFFF;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+ .win .mbar{color:#48484E;font-size:15px;font-weight:600}
+ .win h2{color:#F5F5F7;font-size:21px;letter-spacing:5px}
+ .win p{color:#98989F;font-size:12.5px;letter-spacing:1px}
+ .win button{margin-top:4px;padding:9px 26px;border:0;border-radius:99px;cursor:pointer;
+  background:#0A84FF;color:#FFFFFF;font-size:13.5px;font-weight:600}
+ .win .row{display:flex;gap:10px}
+ .lsel{position:fixed;inset:0;background:#1D1D1Ff2;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;z-index:10;opacity:0;pointer-events:none;transition:opacity .4s}
+ .lsel.show{opacity:1;pointer-events:auto}
+ .lsel h3{color:#F5F5F7;font-size:18px;letter-spacing:6px}
+ .lgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:min(92vw,430px);max-height:min(62vh,500px);overflow-y:auto;padding:2px;scrollbar-width:none}
+ .lgrid::-webkit-scrollbar{width:0;height:0;display:none}
+ .lgrid button.ltile{position:relative;padding:6px 2px 4px;border-radius:10px;border:1.5px solid transparent;cursor:pointer;
+  background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;transition:background .2s}
+ .lgrid button.ltile:hover{background:#2C2C2E66}
+ .lgrid button.ltile.cur{border-color:#F5F5F7}
+ .lgrid button.ltile.cur .wcap{color:#F5F5F7}
+ .lgrid button.ltile.done .wmb{opacity:.38;filter:saturate(.25)}
+ .lgrid button.ltile.done .wcap::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:#30D158;margin-right:4px;vertical-align:1.5px}
+ .wmb{display:grid;gap:1px;pointer-events:none}
+ .wmb i{display:block;border-radius:1.5px;position:relative}
+ .wmb i b{position:absolute;inset:16%;border-radius:50%;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+ .wcap{font-size:10px;font-weight:600;color:#98989F;pointer-events:none}
+ .lsel>button{padding:9px 30px;border:0;border-radius:99px;cursor:pointer;
+  background:#0A84FF;color:#FFFFFF;font-size:13.5px;font-weight:600}
+</style>
+</head>
+<body>
+  <div class="topbar">
+   <h1>FLIP</h1>
+   <div class="mtabs" id="mtabs" title="单子:每区 1 子(50 关) / 双子:每区 2 子(20 关)">
+    <button id="mtMain" class="on" onclick="setMode(false)">单子</button>
+    <button id="mt2" onclick="setMode(true)">双子</button>
+   </div>
+   <div class="lvlchip" id="lvlchip" onclick="openLsel()">第一关 · 5×5</div>
+  <button class="qbtn" id="qbtn" onclick="openTut()">?</button>
+  <div class="dots" id="dots"></div>
+ </div>
+ <div class="scene" id="scene">
+  <div class="ripple" id="ripple"></div>
+  <div class="card" id="card">
+   <div class="face day" id="dayFace"></div>
+   <div class="face night" id="nightFace"></div>
+  </div>
+ </div>
+ <div class="btns">
+  <button id="flipBtn" onclick="flip()">翻转</button>
+  <button onclick="hint()">提示</button>
+  <button onclick="undo()">撤销</button>
+  <button onclick="reset()">重置</button>
+   <button id="sndBtn" onclick="toggleSound()">🔊</button>
+   <button id="bgmBtn" onclick="toggleBgm()">🎵</button>
+ </div>
+ <div class="tut" id="tut" onclick="if(event.target===this)closeTut()">
+  <div class="wrap">
+   <div class="thead"><h3 id="tutTitle">怎 么 玩</h3><button class="xbtn" onclick="closeTut()">✕</button></div>
+   <div class="ttabs"><button id="ttabA" class="on" onclick="tutTab(0)">玩法说明</button><button id="ttabB" onclick="tutTab(1)">进阶</button></div>
+    <div class="tbody" id="tutWrap"></div>
+   <div class="tfoot"><button class="go" onclick="closeTut()">知道了 · 开始玩</button></div>
+  </div>
+ </div>
+ <div class="status" id="status"></div>
+ <div class="win" id="win">
+  <div class="emblem" id="emblem"></div>
+  <h2 id="winTitle">已通关</h2>
+  <p id="winSub"></p>
+  <p id="winStats"></p>
+  <div class="row">
+   <button onclick="reset()">再玩本关</button>
+   <button id="nextBtn" onclick="nextLevel()">下一关 →</button>
+  </div>
+ </div>
+  <div class="lsel" id="lsel">
+   <h3 id="lselTitle">关卡</h3>
+  <div class="lgrid" id="lgrid"></div>
+  <button onclick="closeLsel()">关 闭</button>
+ </div>
+<script>
+const LEVELS=[
+{n:5,day:["AAAAA","BBBBB","CCCCC","DDDDD","EEEEE"],night:["QSSSP","QQSTP","RQSTP","RQRTP","RRRTP"],anchors:[11],tip:"每行 1 子 · 每列 1 子 · 任两子不相邻<br>正面的色带只是行——真正的色区在<b>背面</b>(正面的另一面):点「翻转」",hf:"both",pig:false,sol:[2,4,1,3,0]},
+{n:5,day:["CCAAA","CDAEB","CDAEB","DDEEB","DDEBB"],night:["SSPPP","SSPQQ","RRPQQ","RRTQQ","TTTTT"],anchors:[5],tip:"<b>两个面各有一套色区</b>,每区都恰 1 子<br>正面推不动就翻到背面;背面卡了,再翻回来",hf:"both",pig:false,sol:[2,0,3,1,4]},
+{n:5,day:["EEECC","ADECB","ADDCB","ADDBB","AAABB"],night:["TTTTT","SPPQQ","SPPQQ","SSPRR","SSPRR"],anchors:[1],tip:"找<b>包含关系</b>:某组的候选全挤进同一区 → 该区被占定,<b>其余格可排除</b>(标 ✕ 后生效)<br>两个面都要用",hf:"both",pig:true,sol:[1,3,0,2,4]},
+{n:5,day:["CAAAB","CCABB","CEAAB","EEDDB","EEDDB"],night:["SSRRR","SSRQP","TSQQP","TTQPP","TTTPP"],anchors:[3],tip:"一面卡住,另一面往往正通着——<b>两面交替</b>推进",hf:"both",pig:false,sol:[3,1,4,2,0]},
+{n:5,day:["DDAEE","DDAEE","BDAEE","BBACC","BBBCC"],night:["SSQQT","RSQQT","RSSQT","RPPQT","RPPPP"],anchors:[21],tip:"<b>单看任何一面都推不动</b>——两面交替使用",hf:"both",pig:false,sol:[3,0,2,4,1]},
+{n:5,day:["AAAAA","CBBBB","CCCCC","CDDDD","EEEEE"],night:["TTTSS","TTTSQ","TTPSQ","RTPPQ","RRPQQ"],anchors:[14],tip:"行、列、区——三种「恰 1 子」轮流用,哪边候选少先推哪边",hf:"both",pig:false,sol:[3,1,4,2,0]},
+{n:5,day:["ABCCE","ABCDE","ABCDE","ABCDE","ABCDD"],night:["TTRRR","QTRRS","QTPPS","QQPPS","PPPSS"],anchors:[1],tip:"正面排除一半,背面排除另一半;卡住就翻转",hf:"both",pig:false,sol:[1,3,0,4,2]},
+{n:5,day:["ACCCE","AACDE","ABCDE","ABCDE","ABCCE"],night:["SSPPP","TSSPP","TSSRP","TQRRR","TQQRR"],anchors:[21],tip:"两个面的色区互相咬住:这面只剩两格,翻转看哪格活",hf:"both",pig:true,sol:[4,2,0,3,1]},
+{n:5,day:["BBCDE","ABCDE","ABCDE","ABCDE","ABCDD"],night:["PPPPQ","PSQQQ","SSSQQ","SSTTR","STTTR"],anchors:[22],tip:"先定锁得最死的那一行,其余自然松动",hf:"both",pig:false,sol:[1,3,0,4,2]},
+{n:5,day:["BAAAA","BBBBB","CCCCC","CDDDD","CEEEE"],night:["PQQQS","PPQQS","PQQRS","TTRRR","TRRRR"],anchors:[16],tip:"排除到只剩一格,就是它",hf:"both",pig:true,sol:[2,0,4,1,3]},
+{n:6,day:["BBAAAA","BBCAAA","BBCDDD","BBCDDF","EECFFF","EEEFFF"],night:["UUPQQQ","UUPPQQ","UUPPQQ","RRPPTT","RSSSTT","RRSTTT"],anchors:[4],tip:"6×6:正面推一步,背面接一步——<b>包含排除</b>(提示会标出虚线圈格)",hf:"both",pig:true,sol:[4,1,3,5,2,0]},
+{n:6,day:["BBCFFF","ABCDEF","ABCDEF","ABCDEF","ABCDEF","ABCFFF"],night:["RRRUUU","RUUUUU","QQQQUU","QQQQSS","QPPPST","QPTTTT"],anchors:[35],tip:"6×6:分区开始交错,翻转会更勤",hf:"both",pig:false,sol:[1,3,0,4,2,5]},
+{n:6,day:["AAAAAC","CBBBBC","CCCCCC","DDDDDD","EEEEEE","FFFFFF"],night:["URRSSS","URRSSS","TTRSPP","TTTTPP","TTTTPP","TTTQQP"],anchors:[14],tip:"6×6:某组的候选全挤进同一区——区外先排掉",hf:"both",pig:false,sol:[0,4,2,5,1,3]},
+{n:6,day:["EEECCC","EEEBCC","EEDBBB","EEDDFB","EEDFFB","AAAFFF"],night:["QQUUUT","QQUUUT","QQQPTT","RRPPST","RRSSSS","RSSSSS"],anchors:[3],tip:"6×6:正面推一步,背面接一步,别在一面硬耗",hf:"both",pig:true,sol:[3,1,5,2,4,0]},
+{n:6,day:["BBCFFF","BCCFFA","BBBEAA","DBBEEA","DDBBEA","DDBEEE"],night:["SSSSSS","SSTTTT","SRRUTT","PRUUQQ","PRUUUU","PPUUUU"],anchors:[24],tip:"6×6:包含排除——候选全在一个区,该区占定,区外全 ✕",hf:"both",pig:true,sol:[2,4,1,5,0,3]},
+{n:6,day:["CCCCEE","CCCCCC","BBBCAA","BDDAAA","BFFFAA","FFFFAA"],night:["QQTPPP","QQTTPP","QQTTPP","QQUUPP","SQURRR","SSSRRR"],anchors:[9],tip:"6×6:越往后,越要在两面之间来回",hf:"both",pig:true,sol:[5,3,0,2,4,1]},
+{n:7,day:["AABBBBD","ABBDDDD","AABEEDD","EEEECCC","GEEECCC","GGEFCCC","GFFFCCC"],night:["RROOOPP","RRPPPPP","RRNNNPP","RRNNNNP","MMNNQQQ","SMSNNQQ","SSSNNQQ"],anchors:[44],tip:"7×7:先扫边行边列,再进中腹",hf:"both",pig:true,sol:[4,6,1,3,0,5,2]},
+{n:7,day:["ADDFFFF","ABDDFFF","BBBDFCF","BBDDCCC","BGDDCCC","GGGDCCE","GGGDCCE"],night:["QQQPPPP","MMMPPSS","MMMSSSS","MMMSSSS","OOOSNNN","OOOONRN","OOOORRR"],anchors:[11],tip:"7×7:鸽笼——三个区挤两个格,别处必有子",hf:"both",pig:true,sol:[0,4,1,3,5,2,6]},
+{n:7,day:["FAAAAAB","FFDDBBB","CCDDBBB","CCCCCCB","CCCCCGG","CCCCCGG","EEEEEEG"],night:["NMMROOO","NMMROOQ","MMMROQQ","MMMMPQQ","SMMMPPP","SMMMPPP","SSMMPPP"],anchors:[7],tip:"7×7:排除链变长,翻转节奏要稳",hf:"both",pig:true,sol:[4,0,3,6,2,5,1]},
+{n:7,day:["GGDDDDD","GGDDDDD","GCCDDDF","DDDDFFF","DAAEBFF","AAAEFFE","AAAEEEE"],night:["SPPPPPO","SMMMMOO","SMMMMOO","QQQQQOO","QQQQQQQ","RRQQQQQ","RRQQNNN"],anchors:[47],tip:"7×7:正面认的形状,背面未必认",hf:"both",pig:true,sol:[3,0,2,6,4,1,5]},
+{n:7,day:["CCCCCDE","CCCCDDE","BBBDDEE","BBBDDDA","GGGDDAA","GGGFFAA","GGGFFAA"],night:["QSSSMMM","QSSMMMM","SSSMMMM","SSOOOOM","OOOOORR","OONOPRR","NNNOPRR"],anchors:[46],tip:"7×7:行宽了,先把列收窄",hf:"both",pig:true,sol:[0,6,1,3,5,2,4]},
+{n:7,day:["GGCCCCC","GGGCCCC","GGEEEEE","BBAAEEF","BBAAAFF","BBAAAAF","BBADDDF"],night:["MOOOOOO","MOOOOSS","OOSOSSS","PPSSSSS","PPRRSNN","PPPRSSN","PPPRSQQ"],anchors:[47],tip:"7×7:翻转不是检查,是推理的一半",hf:"both",pig:true,sol:[2,0,4,1,6,3,5]},
+{n:7,day:["EEEEEBB","EEEBBBB","DGGFFBB","DGGGBBB","CCGGGAB","CCCGAAA","CCCGAAA"],night:["OOOOPSS","OOOQQQS","OOOQQQS","ONNNQMS","NNNNMMM","NNNNMMM","RRRNMMM"],anchors:[40],tip:"7×7:两面咬得越紧,推进越快",hf:"both",pig:false,sol:[4,6,3,0,2,5,1]},
+{n:8,day:["HHAAAAAA","DDAAAAAA","DDGGAAAE","DGGGGEEE","DGGGGCCC","DGGGFCCC","GGGGFFCB","GGGGFFBB"],night:["OOONNPPP","OONNNNPP","SONNMPPP","SOMMMPPP","MMMMMQQP","MMMMQQQT","MMMMQQQT","MMMRRRQT"],anchors:[45],tip:"8×8:大盘别慌,先角后心",hf:"both",pig:false,sol:[1,3,0,6,2,5,7,4]},
+{n:8,day:["BEEEHHHC","BEBEHHHA","BBBEHHHA","BBBGHFAA","BBGGGFAA","BBBGAAAA","DBDDAAAA","DDDDAAAA"],night:["MMMMNNOO","MMMNNNOO","SMNNNNTO","SNNTTTTT","SRRPTTTT","RRRPTTTQ","RRRPTQQQ","RRRPPQQQ"],anchors:[20],tip:"8×8:一个区只剩两三格时,翻转对照另一面",hf:"both",pig:false,sol:[7,1,4,0,5,3,6,2]},
+{n:8,day:["EEDDDDDD","GEFFDCDD","GEEFCCCC","GEFFCCCC","GEEFACHH","GEFFABHH","GGAAABHH","GGAABBBB"],night:["OOQMMSSS","OOQMTSSS","OQQMTSSS","OQNMTTPS","OQNNTPPP","ORNNNPPP","ORRRRRPP","ORRRRRPP"],anchors:[36],tip:"8×8:靠<b>排除链</b>推进,两面交替才能走通",hf:"both",pig:true,sol:[3,0,6,1,4,2,7,5]},
+{n:8,day:["CBBBHHHH","CFFFHHGH","CFFFGGGH","CFFFGGAA","CCCFGGAA","CCCEDDAA","CCCEDDAA","CCCCDDAA"],night:["TTQQQOOO","QQQQQOOO","QQQNQOOO","RQQNNNSO","RQQNNSSO","RRRMMSSS","RRRMMSSP","RMMMMSPP"],anchors:[18],tip:"8×8:排除链层层相扣,退一步重推也值",hf:"both",pig:true,sol:[1,7,2,4,0,5,3,6]},
+{n:8,day:["HHAAACCC","HHHHHCCC","FHHHHCCC","HHHHCCCC","BHHGCCCE","BBGGCCDE","GGGCCDDD","GGGGGDDD"],night:["SMMMTTQQ","SMMMSTQQ","SSSSSTTQ","SSSSSNOQ","SPPRROOQ","PPPRROOQ","PPPRROOO","RRRRROOO"],anchors:[29],tip:"8×8:两面往返越勤,死路越少",hf:"both",pig:false,sol:[4,2,0,5,7,1,6,3]},
+{n:8,day:["HHAAAEEE","HHHAAEEG","HHHABBEG","HHHABGGG","DHHHHGGG","DDDHCCGG","DDDDCCGG","FDDDCCGG"],night:["RRRMOOOO","RROOOOOO","RRRRROQQ","RPSSNQQQ","PPSSNNQQ","PPPNNNQQ","TPPNNNNQ","TTTNNNNQ"],anchors:[3],tip:"8×8:把 ✕ 用足——排除也是落子",hf:"both",pig:true,sol:[3,6,4,2,7,1,5,0]},
+{n:8,day:["ACCCCHHD","AAECHHHD","AEEEHDDD","AAEFFDDD","AFEFDDDG","FFFFGGGG","FBBBBGGG","BBBBBBBG"],night:["TTTTTTTM","PPNNTTMM","PPPNNMMM","PPNNOMQM","NNNNOOQQ","RNOOOSQQ","RROOOSQS","RRROOSSS"],anchors:[19],tip:"8×8:两面咬合,<b>单看任何一面都推不动</b>——排除层层相扣",hf:"both",pig:true,sol:[2,6,3,1,4,7,0,5]},
+{n:9,day:["EEAAAAAAA","EEEAAAAFF","EECCCCAFF","CCCCGCFFF","CCCGGGFFF","BCCGGGGDD","BBCCHHHID","BCCHHHIII","BBBHHHIII"],night:["NNNNNNUUU","NNNQQQUUU","NNQQQQUTU","NOOOOTTTT","NOOTTTTTM","RROOSSSMM","RROOPSPMM","RRPPPPPMM","RRPPPPPPP"],anchors:[40],tip:"9×9:先清行、列里的孤子",hf:"both",pig:true,sol:[1,3,8,2,4,7,5,0,6]},
+{n:9,day:["IIIIADDDD","IIAAAACCD","IAAGACCDD","EGGGCCCCF","EECCCCCCF","EEEECCCCF","EEEBBBBFF","EEEBBBHHF","EEBBBHHHF"],night:["TTTOOOMMM","TOOOOMMMM","TOOOOMMMM","SSOOSMMMM","SSSSSUPPP","SSSSQUPPR","SSNNQUUPR","NNNNUUUUU","NNNNUUUUU"],anchors:[77],tip:"9×9:鸽笼与排除链交替上",hf:"both",pig:true,sol:[0,3,7,1,6,8,4,2,5]},
+{n:9,day:["AAEEEEHHH","AAAEHHHHH","AAAAAHGHH","AACGGGGGG","AAAGGGGGG","AAAAGBGDF","IIIIGBBDD","IIIIBBDDD","IIIIBBDDD"],night:["NNRRROOOO","NNRRROPOO","NRRRPPPOO","NPUUPPPOO","NPPPPPPTT","QPPPPSPTT","QPPPSSTTT","QQQPSSSSM","QQQSSSSMM"],anchors:[59],tip:"9×9:大区不难,难的是两面的缝",hf:"both",pig:false,sol:[6,3,0,2,4,8,5,1,7]},
+{n:9,day:["HHHHDDAAI","HHHDDDAII","HHHHDDDII","HHGCDDIII","CCCCCCIII","CCCCCCFBI","CCCFFFFBB","CFFFFFEBB","FFFFFEEBB"],night:["RTTTTPPPP","RRTTTPPPP","RRUUTPPPQ","RRUUPPPPQ","RRUUNPPQQ","MMMUNNQQQ","MMUUNSSQQ","MMUNNOSSQ","NNNNNOSSS"],anchors:[44],tip:"9×9:卡住就问——哪一区只剩一格?",hf:"both",pig:true,sol:[6,3,0,2,8,1,4,7,5]},
+{n:9,day:["CCIAAAAAA","CCFAAAAAA","CCFFAAAAA","CGFFFAEAA","GGFFDDEAA","GGGGEEEEA","GGGGGEEHH","GGGGGEBBB","GGGGGGBBB"],night:["QQQQMOOOO","MMMMMOOOO","MMMMMMMNN","PPMMMUNNR","PSUUUUNNR","SSUUUUNRR","SSSSUUNRR","SSSSUTNTT","SSSSSTTTT"],anchors:[79],tip:"9×9:翻转频率就是节奏",hf:"both",pig:true,sol:[2,5,3,0,4,6,8,1,7]},
+{n:9,day:["FFFEEHHCC","EEEEEHHCC","EEEEECCCC","EEGGGCCCC","EEGGGIIIC","BBGGGIIIC","BBBBBIIII","BBBBBIDII","BBBBAIDII"],night:["UMMMMQQQQ","UMMMMQQQQ","MMMMMQQQN","MMPPPQQNN","PPPPPSSON","PPPSSSSON","PPPSRTTOT","PPSSRRTTT","SSSSRTTTT"],anchors:[35],tip:"9×9:先定边界行,中间自然开",hf:"both",pig:true,sol:[0,5,1,8,2,7,3,6,4]},
+{n:9,day:["BBHHHHHHH","BBBHHHHHH","BBBEHGHHH","BBBBGGGGA","BBBGGGGII","DDBDGGIII","DDDDDGIII","DDCDFGIII","DCCDFFIII"],night:["PPPPMRRRR","PTTTMMMRR","PPTTMMMMM","PPTMMMMMM","PUUUSSSSM","UUUUOSSQQ","NUUUOOQQQ","NNUUOOQQQ","NNUUOOQQQ"],anchors:[52],tip:"9×9:两面交替,一气呵成",hf:"both",pig:true,sol:[6,0,3,8,5,7,2,4,1]},
+{n:10,day:["IIIBBBEEEE","IIBBBBEEEE","CBBBDEEEEE","CBCDDDEEEE","CCCDGDEEEA","CCCDGDAAAA","CCFFGGGAAA","CCGFGGGHAA","CGGGGGHHAA","CGGGGHHHJJ"],night:["VVVVNNNNNN","VVQQQNNNTT","VOOQNNNTTT","VPOONNNTTT","VPOONNNTRT","PPOONNNNRT","PPOOONSMMM","POOOUUSMMM","POOOUUSMMM","OOOOUSSSMM"],anchors:[58],tip:"10×10:先扫四边,再啃中腹",hf:"both",pig:true,sol:[0,3,7,5,1,8,2,4,6,9]},
+{n:10,day:["EEEEEEDDDD","EEEEEEDDAD","FFFIEEDDAA","FFIIIICCAA","FFIIIIGCAA","FIIIIGGAAA","BBBIGGGAAA","BBBGGJHHAA","BBBJGJJHHA","BBBJJJJJHH"],night:["QQQQQQQNNN","TTQQQQQNNN","TTTQRRRNNN","TTPPRRRRRR","URRRRRRRRR","UURRRVRRRM","UUUUUURMMM","SUUUUOOOOO","SUUUUOOOOO","SUUUUUOOOO"],anchors:[2],tip:"10×10:排除链更长,记牢已锁的区",hf:"both",pig:false,sol:[2,9,1,3,7,5,8,6,0,4]},
+{n:10,day:["IIAAAFFFEE","IAAAAAFFFF","IAAAAAFGGF","IIAAAAGGGF","IDDDAGGGGG","BBJDDGCGGG","JJJDDDCGGG","JJJDCCCCGG","JJJJCCCHHH","JJCCCCCCHH"],night:["UUUMMMMMMO","UUUSMMSMMO","UUUSSSSMMM","NNUUSSSMMV","NNNNSSVVVV","NNNPVVVVVV","NPPPVVVTQQ","RRRRTTTTQQ","RRRRTTTQQQ","RRRRRTQQQQ"],anchors:[82],tip:"10×10:鸽笼在大盘上更值钱",hf:"both",pig:true,sol:[9,7,0,4,6,1,3,5,2,8]},
+{n:10,day:["EEBBAAHHHH","EEBBBAHHHC","EJBBAAHHHC","EJBAAAHHCC","EJJAAAGGCC","EJJIAGGGCC","EFFIIIGDDC","EFFFIIGDDD","FFFFIIIDDD","FFFFIIIIDD"],night:["RRRRNNNNOO","RTRRNNNOOO","RTRRNNNOOO","TTRRVNNOOO","TTTRVVVVOQ","TTTRVUUUQQ","PPTTSUUMQQ","PPTSSSUMQQ","PPPPSSMMMQ","PPPPSSMMMQ"],anchors:[2],tip:"10×10:盘更大,排除链更长",hf:"both",pig:true,sol:[2,6,1,4,8,5,0,3,9,7]},
+{n:10,day:["AAAAAABBBB","FFFAAABIII","FFAAAAAIII","FFFGGGHIII","FFFGHHHHID","FJJJHHHHIH","FJEEEHHHHH","FFEEHHHHHH","FEEEEHHHHH","FEEECCCCHH"],night:["VVVVVVNNOO","VVVVVVNNNN","MVVVVVNNNQ","MMVMPPNNQQ","MMMMMUNNQQ","MMMMMUUQQQ","MMMMUUQQQQ","RRSSTTTQQT","SSSSTTTTTT","SSSSTTTTTT"],anchors:[8],tip:"10×10:翻转要勤,硬推一面必卡",hf:"both",pig:true,sol:[8,3,7,4,9,1,5,0,2,6]},
+{n:10,day:["IIAABBBBJJ","IIBABBBJJJ","IBBBBBBBJJ","IIGGGBBJJJ","FFFGBBEEEJ","FFGGGGEECJ","FFGDEEEEEE","FFFDDEEHEE","FFDDHHHHEE","FFFDHHHHHH"],night:["PPPOOOONNN","MMPOOOONNN","RMOOOOONNN","RRRRRTTVVN","RRRRRRTVVN","QRRRRRTVVV","QQQRRUTVVV","QQQUUUTVVV","QQQQUUSVSV","QQQQUUSSSV"],anchors:[2],tip:"10×10:✕ 标满一圈,答案自己浮出来",hf:"both",pig:true,sol:[2,0,5,9,3,8,6,4,1,7]},
+{n:10,day:["EEEHHHHBBB","EEHHBBBBBB","FEEHBBDDDB","FFFHHDDBBB","FIFJDDDDDD","IIFJJDDDDD","IIIJJJJDDD","IICCJJJAAA","IICCGJGAAA","IGGGGGGAAA"],night:["SSVVPPPRRR","SVVVPPPPPR","SVVVPPPRRR","VVVMPPTTRR","UVMMMMTTRR","UUUMMMMTTR","UUNNNNNTTT","UUNNNNNTQO","UUNNNQQQQO","UNNNNQQOOO"],anchors:[32],tip:"10×10:中盘最密,稳住节奏",hf:"both",pig:true,sol:[5,0,9,2,7,4,1,3,6,8]},
+{n:11,day:["CCCCEEEEEFF","CCCCCEEEEFF","CHICCKEEEFF","HHIKCKEEBBF","HHIKKKKABBB","HHIIKAAABBB","DDIIAAABBBB","DDIIGGABBBB","DDDIIIAIBBB","DDDDDIIIBBB","DDIIIIIIBBJ"],night:["PTTTOOOORRR","PPTTOOOOROR","PPTTMOOOROO","PTTTMOOOOOO","PPTMMMMOOOO","PPPMMMQOOOO","PWWWWMQVVVV","UWWWWWWWWVV","UUUSSWWWWVN","UUUSSWWWWNN","UUUUSWWWWNN"],anchors:[29],tip:"11×11:分区交错更深,先锁小区再放大区",hf:"both",pig:true,sol:[9,2,7,0,4,6,8,5,3,1,10]},
+{n:11,day:["BBBBBIIIIIK","BBBIIIIIIIK","BBBBIIIIIIK","BCBCCIGAAKK","BCCCCCCAAAA","BCCDCCFFFAA","JDDDDDFAAAA","JJDDFFFFFEE","JJHDDDFFEEE","JJHDDFFEEEE","JJHHHHFEEEE"],night:["WWWWVVRRRRR","VWWVVVVRRRR","VVVVVVRRRRP","VVVVVNNPPPP","VVVSSSNPPPP","MVVSSSQQPPP","MMVMMSQQPPP","MMMMMMQQQQO","MUMMMMQQQQO","UUTMMMQQQOO","UUTTTTQQOOO"],anchors:[60],tip:"11×11:两面信息都碎,往返要快",hf:"both",pig:true,sol:[0,10,4,6,8,5,3,7,1,9,2]},
+{n:11,day:["BBBFFFIICCC","BBBFFFIIIII","BBBFFFIIIII","BBBBFFIIIII","GAAAAKIIIII","GAAAAKDDIII","JJJAKKKDDII","JJJJKKKDDDI","JJJJJKKHDDE","JJJJJKKHHHH","JJJJHHHHHHH"],night:["OOOOOOPPPPP","OOOOOPPPPPP","OOOMMMMPPPP","VOOMMMMMUTT","VVOVVWWWUTT","VVVVNWWUUTT","VVVVNWWUUUT","VVVVWWWUUUU","VRRRWWWUUUS","RRRRRWQQSSS","RRRRRQQQQSS"],anchors:[116],tip:"11×11:排除到中盘,翻转如呼吸",hf:"both",pig:true,sol:[8,1,3,9,0,4,7,5,10,2,6]},
+{n:11,day:["EDDDDDKKKKK","EDDDDDKKKKK","EDDDDDKKKKK","CCDDDDDBKKK","CCCGGGGFFKK","ACCGGGGFFFF","ACCCGGFFFFF","AAHCGGGHFJJ","AAHHHHHHFJJ","AAHHHHHHFJJ","AAIIIHHHJJJ"],night:["PPNNWWSRRRR","VPPNWWSRRRR","VVVVWWSRRSR","VVVVWWSSSSS","VVVVWWWSSSO","VVQQWWWSOOO","VVQQQQOOOOO","QQQQQQTTOOU","QQQMMMTTUUU","QQQMMMMUUUU","QQQMMMMUUUU"],anchors:[60],tip:"11×11:大盘拼的是耐心,不是速度",hf:"both",pig:true,sol:[0,3,10,7,2,5,8,1,6,9,4]},
+{n:12,day:["CCCHHHLLLLBB","CCCHHHHLBLBB","CCCGGHBBBBBB","CCGGGHBBBBBB","KKIGGGBBBBBB","KIIIGGGBBFFF","KKIIGGGEEEFF","KKIIGGFFFFFF","KKIIIFFFFDDD","KAAAIIFFFDDD","AAAAAAFFFDJD","AAAAAAJJJJJJ"],night:["XXXXXXXOOOOO","UUUUXXXXXOOO","UUUUXXXXXXOO","MUUUVVXXXXXX","MMUUVVPPXNNN","MMWWVVPPNNNN","MMWWVVPPNNNT","RMWWWPPNNNTT","RRWRWWPNNTTT","RRRRRRPSSTTQ","RRRRRRRRSSTS","RRRRRRRRRSSS"],anchors:[60],tip:"12×12:收官级大盘——每一步都要在两面之间往返",hf:"both",pig:false,sol:[7,5,1,4,6,0,8,10,2,11,3,9]},
+{n:12,day:["HFFFGGGGGGLL","HFFFFKKKKGLL","HHFFFKKKKGLL","HHHFFKKKKGLL","HHHHHCKKKGLI","HBBBBCJJKGII","HBBBBCCJIIII","BBBBBCCJJIAI","BDBBCCCJJAAA","DDDDCCEJJAAA","DDDEEEEJJAAA","DDDEEEEEAAAA"],night:["XXXXXXXXNNNN","QRRXRXXXNNNN","QRRRRRROONMM","QRUURWOOONMM","QRUVVWWOOOMM","QQUVVWWWOOMM","QUUVVVWWOOMM","QUUVVVWWOMMM","QQUUVWWWWPPP","QTTTVVSWPPPP","TTTTVSSSPPPP","TTTTSSSSSPPP"],anchors:[33],tip:"12×12:<b>每一步都要在两面之间往返</b>",hf:"both",pig:true,sol:[0,4,9,11,6,2,8,5,1,10,7,3]}
+];
+const LEVELS2=[
+{n:9,day:["BBBCGGCCH","BBBCCCCCH","BBEEFCCGG","EEEEFFIGG","DDEEFFIIG","DDAEBBBFG","EEAADAAFF","EEADDAAIF","EHHHHIIII"],night:["TTTQQQRRR","TTTQQQRRR","TTTQQQRRO","PNNNMRROO","PNPNNNNOO","PPPSSUUUO","UUMMSUUUO","UUMMMOOSS","TTMMMMSSS"],anchors:[36,42,68],tip:"双子规则:每行 2 · 每列 2 · 每区 2——共 18 子",hf:"both",pig:false,sol:[[5,8],[1,3],[6,8],[2,4],[0,6],[2,4],[0,7],[3,5],[1,7]]},
+{n:9,day:["AAACCIIII","IICCCCEII","IBBCCEEID","HHBBBEEID","HFFCCCAII","HFFBBCGHH","EEEBBDGGG","EEEFFFGGG","EEEGFFGGG"],night:["OOOOUUMPM","OOOOUUMMM","OOQOUPMMM","TQQQUPQSS","TNNPPPQSS","NNNNPPQSS","UUUNRRRRS","UUUSSRRTT","UUSSRRRTT"],anchors:[7,13],tip:"同一区放满 2 颗,全区才整片排除",hf:"both",pig:true,sol:[[2,7],[0,4],[6,8],[0,2],[4,6],[1,8],[3,5],[1,7],[3,5]]},
+{n:9,day:["GGEEEEFFF","GGEEEEEEE","IIEEEFEIH","AACCCFDIH","AACCCFDDH","GACCBDDDD","GGBBBBDDD","GGBBBHHHH","BBBAAAAAH"],night:["TTTNNRRRR","UUTNNQQSS","UUUPPQSSS","UUUPUUSOS","TUMMUPPOO","TUMMPPPOO","SURRRPOOO","SQQQNMMMO","SQQQNNMOO"],anchors:[19,44,47],tip:"一行收口(放满 2 颗),整行才排除",hf:"both",pig:false,sol:[[1,7],[3,5],[1,7],[3,5],[0,8],[2,6],[4,8],[0,6],[2,4]]},
+{n:9,day:["BBGGGICCC","BBGCBBCCC","CCCCBBAAA","GCCCFBAAA","GIIFFFAAA","GIIEEEFED","IIEHHEEED","HIEEEEEEE","HHDDDEEEE"],night:["URRRRRRMM","UURQTTTMM","UQQQTTTMM","SMQQMTOMQ","SMMMMOOOQ","SSMMNNNNT","SOOUNNNNT","OOSPPPNNT","SSSPPPNNN"],anchors:[73],tip:"任两子不相邻——第 2 颗的落位更讲究",hf:"both",pig:true,sol:[[2,5],[0,7],[2,4],[6,8],[0,4],[6,8],[1,3],[5,7],[1,3]]},
+{n:9,day:["BBBBBDIII","BBCCDDDII","BCCCDDAGI","HHDAAAAGI","DDDEAAFEE","IDGECFFFF","IIGCCFFHH","IGGFCFHHH","IGGFFFAAA"],night:["SSUUUMMTT","SSUUUMMPP","SSUUUMPPP","QQQMOOOOO","QQMMNSSSO","NNMMNNSOO","NNRNNRSQQ","TTRNNRRQQ","TTPPPRRRR"],anchors:[58,63],tip:"鸽笼更锋利:两组候选同巢,别处必空",hf:"both",pig:true,sol:[[2,7],[0,5],[3,7],[1,5],[3,8],[1,6],[4,8],[0,2],[4,6]]},
+{n:9,day:["GGGCEEEAB","GGGCEEEAA","HGGCEEAAA","HCCCIIIAA","HIIIIIHHH","BIIIFIIHG","BBAAFFEHG","BDDAFGGGG","BDDDDDDGG"],night:["PPPUUPQQQ","PPPROPQQQ","PTOROQQQQ","TTOOOSSSS","NTOSSSMMS","NSSSSSMMM","NOOOOMMMR","TOOOUMMMR","TTONNNNRR"],anchors:[8],tip:"正面的一对,背面拆成另一对——两面对数",hf:"both",pig:false,sol:[[3,8],[1,5],[3,7],[0,5],[2,7],[0,4],[2,6],[4,8],[1,6]]},
+{n:9,day:["GGGAIBBBB","DDAAIIBCB","DEEAIIBCC","DEEIIGGGC","DEEBBBFFC","CFEEBBFFF","CFHHCAAAD","CCCCCAAAD","CCCHHHADD"],night:["OOOOOUQQQ","OOOPUUUQQ","UUUTTTSSS","NQQTTNMMM","NQQRNNMPP","RRQRRNPPP","RRRRRNSPP","ROORTSSSM","ROOOTSSSS"],anchors:[19,31],tip:"卡住时问:哪个组只差 1 颗?",hf:"both",pig:true,sol:[[0,7],[3,5],[1,8],[4,6],[0,2],[5,7],[1,3],[6,8],[2,4]]},
+{n:9,day:["ACCCIIIIE","HHHIIIIEE","DBHHIIEEE","DBDHIBACC","DDDDEBACC","DDDGEBBFF","DDDGIBBBF","HGDGFFGGG","HGGGFFGGG"],night:["MMQQQTTTS","MRRTTTTSS","RRRNTTNNM","RRNNNTNOM","RRRQPPNOO","RRQQPUSOO","ORQQTUUOO","OPPPPPUUU","OOUPPPPPU"],anchors:[51],tip:"先收一行,排除链自己会滚",hf:"both",pig:true,sol:[[0,3],[5,7],[1,3],[6,8],[1,4],[6,8],[2,4],[0,7],[2,5]]},
+{n:10,day:["JJJHHHIIII","JJJHHHIIIC","FBBHHHIIGG","BBHHHGGGGG","BCCCEEBGGG","AACCEEBDDG","AAAEEEJDDD","FAAAAJJJDD","FFFAADEEEI","FFAADDDEEI"],night:["SSSUUUUUUO","MMMTTUUUOO","MMMTRRUUOO","MMOOORRRRR","SMPOORRRTT","SNPOOQQRRT","SNNNOQQTTT","SNNNPQVMTT","QQNNPVVMTV","QQNNNNNMMM"],anchors:[62,95],tip:"10×10:40 颗,行行列列都在半途",hf:"both",pig:false,sol:[[1,3],[7,9],[0,3],[5,8],[0,2],[4,6],[2,8],[4,6],[1,9],[5,7]]},
+{n:10,day:["JIIIIBBJJG","IIIIIIIJJG","GDDIIIJJJJ","GGDIIHHJJJ","GFDIIHHEJE","FFDAICCCEE","FFFACCCBBB","DDFIIACBBB","DDDHHAACCB","DDDHHAAAAB"],night:["QQQQVVVMTT","QQUUVVVMTT","OOOVVVVMMT","ONNVVVVPTT","ONNPPVPPTQ","MMMPPPPPPQ","MMPPPPRRRR","MTTUURRSNR","MSSSSSSSNN","SSSSOOSSNN"],anchors:[68,74],tip:"10×10:只差 1 颗的组最脆,先攻它们",hf:"both",pig:true,sol:[[0,5],[3,9],[0,7],[2,5],[7,9],[1,3],[6,8],[2,4],[6,8],[1,4]]},
+{n:10,day:["EEEEECCIDD","EEEECCCADD","EECCCCCADD","BBCCCHJADD","GGIIIJJABD","GGGGIJJAAF","GHHHDJJJAF","JHHDDDJCCC","JFDDGGGCCC","FFFFAAAACC"],night:["OOOUNNVVVP","OOONNNVVNP","MOOONNNNNP","MMMORMNNNT","TMRSRNNQQT","TMRSROOOQT","VRRSRROOTT","VVQRRRPOST","QQQRRPPSSS","QQQQUUPSSS"],anchors:[31,62,86],tip:"10×10:每颗子两面同验,对不上就有错",hf:"both",pig:false,sol:[[3,7],[1,5],[7,9],[1,5],[3,8],[0,6],[2,9],[0,4],[6,8],[2,4]]},
+{n:10,day:["DFFFCCEEEE","HCCCCCAAEE","HHBBBAAAAA","BBBBAAIIAA","BBBBGGIIIC","BBBGGGGICC","BBBHHJJJJC","EEEHHIDJJC","EEEHIIIJJJ","EEEIIIFFJJ"],night:["VVPPROOOOO","URRRRROOOT","UTTRRMOOOO","UTTSRMMOOO","UTTSSNMUVV","PPSSSNNMMV","PPPNSNMMMV","PPONSQQMMV","OOOOSSQQRR","OOOSSQQQRR"],anchors:[47,55],tip:"10×10:鸽笼与收口交替,节奏别乱",hf:"both",pig:true,sol:[[0,2],[4,9],[0,7],[2,5],[7,9],[3,5],[1,8],[3,6],[1,8],[4,6]]},
+{n:10,day:["FFFDDIIIIB","FCFDJIIIIB","CCCFJJJBBB","CCCFJJJBBB","EEAFGGBBBB","EEHHHGGCCB","HHHJJJDCCE","HHHJJJDDII","AAHJJJIIII","AHHJGJHHHH"],night:["NVVRRUUQTT","NVVPUUQQTT","NNNPUUUUUT","NNPPUNUMUU","QPPPPUUMUU","QPPPRRTMMO","UUUMMRTMOO","SUUOMTTMOO","SUUOOOOMVV","SSUSSOOVVV"],anchors:[17,55,96],tip:"10×10:放第 2 颗前,先数它排掉几格",hf:"both",pig:true,sol:[[1,3],[7,9],[1,3],[5,8],[0,2],[5,7],[2,9],[4,6],[0,8],[4,6]]},
+{n:10,day:["DBBEEHHHAA","DDEEHHIGAA","DEEEHJJGGA","DEEEJJJGGG","DDGGJJDDGJ","DDDDAADDDJ","FDDAAABBDB","FFFHHABBBB","FCIIFFBCBB","FCIIFFCCBB"],night:["MRRNNUUUUS","MMRRNUVUUS","MMQRUUUUUS","MQQQQUUUSR","PQQQPUUQSR","VQQQPPQQQR","VNNNPPPQQT","VNNNPPPTTT","MMNOOTPTTT","MMMOOTOOOT"],anchors:[57,73,78],tip:"10×10:正面的配对与背面的配对,往往不是同一对",hf:"both",pig:true,sol:[[2,4],[6,9],[1,4],[6,8],[0,2],[7,9],[0,5],[3,8],[1,5],[3,7]]},
+{n:10,day:["EEDDDDDAGG","EEJDFFDAAG","EEJDFFFAAH","EJJCFFAAAA","EEECCFBBBB","EEEAAABBFB","EEEAAAAFFF","GJJAAIHFFF","GIIIIICCCF","GGIIIICCCF"],night:["TMMMMMMVVT","TSMOORUSTT","SSRRRRUSTT","SSSMRMUSTQ","SSSMMMUUUQ","NNNUUUUUUQ","PNNNPUUQQQ","PNNNNRUUUU","PPNRRRRUUU","PPVRRROOOO"],anchors:[56,80],tip:"10×10:越到中盘,越要两头验证",hf:"both",pig:false,sol:[[5,8],[0,3],[5,9],[1,7],[3,9],[1,6],[4,8],[2,6],[0,4],[2,7]]},
+{n:11,day:["GGGGBBBJJCC","KGGIBBBHHCC","KFIIKKBHHCH","FFIIKKKKHHH","DFFFIIJFFFF","DDDFIIJFFFA","DDDDDDDHAAA","DDGGDDDHHHA","EEGAAAHHHHA","EEGAAABBCCC","EEGAAABBCCC"],night:["VSSSSPPMMMM","VVMPPPPMSSS","VMMMMTTUUSS","VVNMMTTUUWW","VVNNOOTPPWW","OWNNOPPPWWQ","OWWOORRRTQQ","OOQQRRRTTTT","OOQQQTTTNNN","OOOQUUUUNNN","RVVVVUUUNNN"],anchors:[7,54,67,89,92],tip:"11×11:44 颗收官级——耐心就是第 45 颗",hf:"both",pig:false,sol:[[3,7],[5,9],[0,3],[5,8],[2,10],[4,6],[1,10],[6,8],[1,4],[7,9],[0,2]]},
+{n:11,day:["JJHHJBBBKKK","JJJJJJBBBBK","JJJJGGEAAAA","JHJJJGEAAAA","HHHJJGEDAEE","IIHJJGDDEEE","IBCCCGDDDDF","BBCCCGIDFFF","BBCCCCIDFFF","DCCCCCIFFFF","DCKKKKFFFFF"],night:["OOOWWWOOQQQ","OOOWWNNOVOM","OOOUNNOOOOM","VVVUNPPOOMM","RVVUNPPPMMQ","RVVVPPPTQQQ","RRRMPPPTTNN","TTWMMMTTTNN","STWMMUUUTTT","SSWSMMURRRR","SSSSSMRRRRR"],anchors:[46,50,94],tip:"11×11:先把四边的行、列收口",hf:"both",pig:true,sol:[[3,10],[1,8],[3,5],[8,10],[2,6],[0,9],[5,7],[1,9],[4,6],[0,2],[4,7]]},
+{n:11,day:["IACCAIIIJDD","IAACAIIIJJJ","IAACCIIJJJJ","IIIIIIIBBBB","IIFFIKIDDDB","KKFFFKKDDDB","KKGFFKKDDDB","KKKFFFEDDDH","GGFFFFFEEEH","GGCJJJJEEEH","GGCJJJHHHHH"],night:["RROOOOWWWVV","RRNNOWWWWSS","OOONNWWWSSS","OOOPNWMMMSS","OOPPPWWTTSS","QPPPPWWWTTT","PPPPPUUMMTT","PPPRUUUMMTT","QQQRRUUUNTT","QQQQUUUVNTT","QSSSSVVVVVT"],anchors:[34,40,87,91,96],tip:"11×11:排除链长,记牢已满的组",hf:"both",pig:true,sol:[[4,9],[1,6],[4,9],[1,7],[3,5],[0,10],[2,8],[6,10],[3,8],[0,5],[2,7]]},
+{n:11,day:["AAFEEEKKHHH","IIEEEEKKHHH","IIEEEKKKHHH","IIIIEBBKHDD","JJCBBBBBHDD","JJCBBBBBDDB","CCCCEEEADBB","CCCFCCAAABB","JJJFFCKABBB","JJJFKKKGGGB","JJJJKGGGGGB"],night:["MOOOOOOQQQQ","MOROOPPQQQQ","MRROOOPPTQQ","SSRMMOPPTPP","SSROOOPPUPP","SSRRRWPPUPP","SSRWWWSSUUP","TTWWWWSSUUP","TTTTNNSSUUU","WWVVNNSSNNN","VVVVVNVVNNN"],anchors:[18,23,71,91],tip:"11×11:翻转如呼吸",hf:"both",pig:false,sol:[[0,2],[4,7],[1,10],[3,8],[6,10],[0,8],[2,5],[7,9],[3,5],[1,9],[4,6]]},
+{n:11,day:["CKKAAAADDKK","KKKAAAADDKK","KKKFFFEBDJJ","IIHFFEEBBJJ","IIIIEEEBBBB","IIGGGGGBBBB","BBGGGCEEBBB","BBBAGIJJHHH","BGAAIIJJJHH","GGAADDDDFFF","GAAADDDFFFF"],night:["VVMMUUQQQRR","VMMMQQQQQRR","VMMQQQQQQQN","SSSQPPPQQQN","USSPPPPPQQN","UUOOPPPMPPP","OUOORRMMMVP","OTTWWWWVVVV","OOTWWWWSSVV","OOOWWWTNNVN","OOOWWWTNNNN"],anchors:[44,73,86],tip:"11×11:深水区,一步一验",hf:"both",pig:true,sol:[[0,4],[2,10],[4,8],[2,10],[0,6],[3,9],[5,7],[1,9],[5,7],[1,3],[6,8]]}
+];
+const DAYP=['#FF6A5F','#FF9F26','#FFD84E','#41C86E','#4EC2E8','#C4D94B','#5B8FE8','#A872E3','#F0709E','#3DCBA6','#7277E0','#C9A080'];
+const NGTP=['#E05A50','#E0822E','#D9B53F','#37A866','#33A3C2','#A8C440','#3868C8','#8E5CC8','#C85588','#27A88C','#5B5CD0','#A08068'];
+const DL12='ABCDEFGHIJKL';
+function nightAlpha(N){return N<=6?'PQRSTU':'MNOPQRSTUVWX';}
+function dayCol(i){return DAYP[i%12];}
+function nightCol(i){return NGTP[i%12];}
+const CN=["一","二","三","四","五","六","七","八","九","十","十一","十二","十三","十四","十五","十六","十七","十八","十九","二十","二十一","二十二","二十三","二十四","二十五","二十六","二十七","二十八","二十九","三十","三十一","三十二","三十三","三十四","三十五","三十六","三十七","三十八","三十九","四十","四十一","四十二","四十三","四十四","四十五","四十六","四十七","四十八","四十九","五十"];
+const PST=(()=>{try{return JSON.parse(localStorage.getItem('reflection10')||'{}')}catch(e){return{}}})();
+PST.done=PST.done||[];PST.done2=PST.done2||[];PST.sound=PST.sound!==false;
+function savePST(){try{localStorage.setItem('reflection10',JSON.stringify(PST))}catch(e){}}
+let MODE2=false,K=1;   /* K=每行/列/区棋子数:单子 1,双子 2 */
+let cur=0;
+function LV(){return MODE2?LEVELS2[cur]:LEVELS[cur];}
+const scene=document.getElementById('scene');
+const dayFace=document.getElementById('dayFace'),nightFace=document.getElementById('nightFace');
+const statusEl=document.getElementById('status');
+const lvlchip=document.getElementById('lvlchip'),dotsEl=document.getElementById('dots');
+const flipBtn=document.getElementById('flipBtn');
+let S=[],prev=[],cellsD=[],cellsN=[],flipped=false,undoStack=[];
+let startTime=0,flips=0,hintsUsed=0,winShown=false,moonT=0;
+let ANCH=new Set();
+
+/* ---- 音效:WebAudio 合成,零外部资源 ---- */
+let AC=null;
+function actx(){try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();
+ if(AC&&AC.state==='suspended')AC.resume();return AC}catch(e){return null}}
+function tone(f0,f1,dur,type,vol,delay){
+ const a=actx();if(!a||!PST.sound)return;
+ const t=a.currentTime+(delay||0),o=a.createOscillator(),g=a.createGain();
+ o.type=type||'sine';o.frequency.setValueAtTime(f0,t);
+ if(f1&&f1!==f0)o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+ g.gain.setValueAtTime(.0001,t);
+ g.gain.exponentialRampToValueAtTime(vol||.12,t+.014);
+ g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+ o.connect(g).connect(a.destination);o.start(t);o.stop(t+dur+.03);
+}
+const SND={
+ place(){tone(560,190,.17,'sine',.16)},
+ tick(){tone(900,700,.05,'triangle',.06)},
+ clear(){tone(330,500,.09,'sine',.08)},
+ flip(){tone(240,780,.24,'sine',.05);tone(170,560,.24,'sine',.045,.03)},
+ bad(){tone(150,110,.13,'square',.06);tone(140,100,.13,'square',.05,.13)},
+  win(){[523,659,784,1047].forEach((f,i)=>tone(f,f,.2,'sine',.11,i*.1))},
+  ui(){tone(640,640,.05,'sine',.05)}
+ };
+ 
+ /* ---- BGM:lo-fi 轻节拍,程序化合成,零外部资源 ---- */
+ const BGM={on:false,g:null,lp:null,nb:null,tid:0,ct:0,bt:0,bn:0,mi:4};
+ const BGM_CH=[[174.61,220,261.63,329.63],[164.81,196,246.94,293.66],[146.83,174.61,220,261.63],[130.81,164.81,196,246.94]];
+ const BGM_PN=[261.63,293.66,329.63,392,440,523.25,587.33,659.26,783.99,880];
+ const BGM_ARP=[0,1,2,3,2,3,1,2];
+ function bgmStart(){
+  const a=actx();if(!a||BGM.on)return;BGM.on=true;
+  BGM.g=a.createGain();BGM.g.gain.setValueAtTime(0,a.currentTime);
+  BGM.g.gain.linearRampToValueAtTime(1,a.currentTime+2);
+  BGM.lp=a.createBiquadFilter();BGM.lp.type='lowpass';BGM.lp.frequency.value=3400;
+  BGM.g.connect(BGM.lp);BGM.lp.connect(a.destination);
+  if(!BGM.nb){const b=a.createBuffer(1,a.sampleRate,a.sampleRate),d=b.getChannelData(0);
+   for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;BGM.nb=b;}
+  BGM.bt=a.currentTime+.25;BGM.bn=0;
+  BGM.tid=setInterval(bgmTick,180);
+  bgmCrackle();
+ }
+ function bgmStop(){
+  if(!BGM.on)return;BGM.on=false;
+  clearInterval(BGM.tid);clearTimeout(BGM.ct);
+  const a=AC,g=BGM.g,lp=BGM.lp;
+  if(a&&g){try{
+   g.gain.cancelScheduledValues(a.currentTime);
+   g.gain.setValueAtTime(g.gain.value,a.currentTime);
+   g.gain.linearRampToValueAtTime(0,a.currentTime+.7);
+   setTimeout(()=>{try{g.disconnect();lp.disconnect()}catch(e){}},900);}catch(e){}}
+  BGM.g=null;BGM.lp=null;
+ }
+ function bgmTick(){
+  if(!BGM.on||!AC)return;const a=AC,BT=60/72;
+  if(BGM.bt<a.currentTime-.05){BGM.bn+=(16-BGM.bn%16);BGM.bt=a.currentTime+.15;}
+  while(BGM.bt<a.currentTime+.7){
+   bgmBeat(BGM.bn,BGM.bt,BT);
+   BGM.bt+=BT/2;BGM.bn++;
+  }
+ }
+ function bgmBeat(n,t,BT){
+  const e=n%8,ch=BGM_CH[Math.floor(n/16)%4];
+  if(e===0||e===5)bgmKick(t);
+  if(e===2||e===6)bgmSnare(t);
+  if(Math.random()>.42)bgmHat(t);
+  if(e%2===0){
+   const f=ch[BGM_ARP[Math.floor(n/2)%8]]*(Math.random()<.16?2:1);
+   bgmPluck(f,t,.055*(.75+Math.random()*.35));
+  }
+  if(n%16===0)bgmPad(ch,t,8*BT);
+  if(e%4===0&&Math.random()<.45){
+   BGM.mi=Math.max(0,Math.min(BGM_PN.length-1,BGM.mi+(Math.random()<.5?-1:1)*(Math.random()<.3?2:1)));
+   bgmBell(BGM_PN[BGM.mi],t+BT*.5);
+  }
+ }
+ function bgmKick(t){const a=AC,o=a.createOscillator(),g=a.createGain();
+  o.type='sine';o.frequency.setValueAtTime(95,t);o.frequency.exponentialRampToValueAtTime(42,t+.11);
+  g.gain.setValueAtTime(.08,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);
+  o.connect(g).connect(BGM.g);o.start(t);o.stop(t+.2);}
+ function bgmSnare(t){const a=AC,s=a.createBufferSource();s.buffer=BGM.nb;
+  const f=a.createBiquadFilter();f.type='bandpass';f.frequency.value=1900;f.Q.value=.8;
+  const g=a.createGain();g.gain.setValueAtTime(.034,t);g.gain.exponentialRampToValueAtTime(.001,t+.09);
+  s.connect(f).connect(g).connect(BGM.g);s.start(t);s.stop(t+.12);}
+ function bgmHat(t){const a=AC,s=a.createBufferSource();s.buffer=BGM.nb;
+  const f=a.createBiquadFilter();f.type='highpass';f.frequency.value=7500;
+  const g=a.createGain();g.gain.setValueAtTime(.011,t);g.gain.exponentialRampToValueAtTime(.001,t+.035);
+  s.connect(f).connect(g).connect(BGM.g);s.start(t);s.stop(t+.06);}
+ function bgmPluck(fr,t,v){const a=AC,o=a.createOscillator(),g=a.createGain();
+  o.type='triangle';o.frequency.value=fr*(1+(Math.random()-.5)*.004);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.012);
+  g.gain.exponentialRampToValueAtTime(.001,t+.55);
+  o.connect(g).connect(BGM.g);o.start(t);o.stop(t+.6);}
+ function bgmPad(fs,t,dur){fs.forEach(fr=>{const a=AC,o=a.createOscillator(),g=a.createGain();
+  o.type='triangle';o.frequency.value=fr;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.018,t+1.4);
+  g.gain.setValueAtTime(.018,t+dur-1.6);g.gain.linearRampToValueAtTime(0,t+dur);
+  o.connect(g).connect(BGM.g);o.start(t);o.stop(t+dur+.1);});}
+ function bgmBell(fr,t){const a=AC;[[fr,.06],[fr*2,.018]].forEach(p=>{
+  const o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.value=p[0];
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(p[1],t+.01);
+  g.gain.exponentialRampToValueAtTime(.001,t+1.1);
+  o.connect(g).connect(BGM.g);o.start(t);o.stop(t+1.15);});}
+ function bgmCrackle(){
+  if(!BGM.on||!AC)return;
+  const a=AC,t=a.currentTime+.02,s=a.createBufferSource();s.buffer=BGM.nb;s.playbackRate.value=1+Math.random()*.6;
+  const f=a.createBiquadFilter();f.type='bandpass';f.frequency.value=3000+Math.random()*3000;f.Q.value=3;
+  const g=a.createGain();g.gain.setValueAtTime(.006+Math.random()*.006,t);g.gain.exponentialRampToValueAtTime(.001,t+.03);
+  s.connect(f).connect(g).connect(BGM.g);s.start(t);s.stop(t+.05);
+  BGM.ct=setTimeout(bgmCrackle,80+Math.random()*320);
+ }
+
+/* ---- 推理核心(与生成器逐行同构:单候选 + 鸽笼包含排除) ---- */
+function buildGroups(lv,mode,flt){
+ const N=lv.n,NA=nightAlpha(N),gs=[];
+ for(let r=0;r<N;r++)gs.push({t:'第'+(r+1)+'行',cells:Array.from({length:N},(_,c)=>r*N+c)});
+ for(let c=0;c<N;c++)gs.push({t:'第'+(c+1)+'列',cells:Array.from({length:N},(_,r)=>r*N+c)});
+ if(flt!=='rc'){
+  if(mode!=='night')for(let li=0;li<N;li++){const l=DL12[li],cells=[];
+   for(let j=0;j<N*N;j++)if(lv.day[(j/N)|0][j%N]===l)cells.push(j);
+   gs.push({t:'正面'+l+'区',cells});}
+  if(mode!=='day')for(let li=0;li<N;li++){const l=NA[li],cells=[];
+   for(let j=0;j<N*N;j++)if(lv.night[(j/N)|0][j%N]===l)cells.push(j);
+   gs.push({t:'背面'+l+'区',cells});}
+ }
+ gs.forEach(g=>g.cellSet=new Set(g.cells));
+ return gs;
+}
+function padExcl(lv,S,mode,withMarks){
+ const N=lv.n,excl=new Array(N*N).fill(false);
+ if(withMarks)for(let j=0;j<N*N;j++)if(S[j]===2)excl[j]=true;
+ const rowC=new Array(N).fill(0),colC=new Array(N).fill(0),dC={},nC={};
+ for(let i=0;i<N*N;i++)if(S[i]===1){
+  const r=(i/N)|0,c=i%N;
+  rowC[r]++;colC[c]++;
+  dC[lv.day[r][c]]=(dC[lv.day[r][c]]||0)+1;
+  nC[lv.night[r][c]]=(nC[lv.night[r][c]]||0)+1;
+ }
+ for(let i=0;i<N*N;i++){
+  if(S[i]!==1)continue;
+  const r=(i/N)|0,c=i%N;
+  if(rowC[r]>=K)for(let k=0;k<N;k++)excl[r*N+k]=true;
+  if(colC[c]>=K)for(let k=0;k<N;k++)excl[k*N+c]=true;
+  if(mode!=='night'&&dC[lv.day[r][c]]>=K){const dl=lv.day[r][c];
+   for(let j=0;j<N*N;j++)if(lv.day[(j/N)|0][j%N]===dl)excl[j]=true;}
+  if(mode!=='day'&&nC[lv.night[r][c]]>=K){const nl=lv.night[r][c];
+   for(let j=0;j<N*N;j++)if(lv.night[(j/N)|0][j%N]===nl)excl[j]=true;}
+  for(let rr=Math.max(0,r-1);rr<=Math.min(N-1,r+1);rr++)
+   for(let cc=Math.max(0,c-1);cc<=Math.min(N-1,c+1);cc++)
+    excl[rr*N+cc]=true;
+ }
+ return excl;
+}
+function applyPig(lv,S,excl,groups,trace){
+ for(;;){
+  let applied=false;
+  for(let Gi=0;Gi<groups.length;Gi++){
+   const G=groups[Gi];
+   const need=K-G.cells.filter(j=>S[j]===1).length;
+   if(need<=0)continue;
+   const cand=G.cells.filter(j=>!excl[j]&&S[j]!==1);
+   if(cand.length<need)continue;
+   const candSet=new Set(cand);
+   for(let Hj=0;Hj<groups.length;Hj++){
+    if(Hj===Gi)continue;
+    const H=groups[Hj];
+    if(H.cells.length<cand.length)continue;
+    let sub=true;
+    for(const j of cand){if(!H.cellSet.has(j)){sub=false;break;}}
+    if(!sub)continue;
+    if(K-H.cells.filter(j=>S[j]===1).length!==need)continue;
+    const elim=[];
+    for(const j of H.cells)if(!candSet.has(j)&&!excl[j])elim.push(j);
+    if(elim.length===0)continue;
+    for(const j of elim)excl[j]=true;
+    if(trace)trace.push({type:'pig',g:G.t,h:H.t,elim:elim.slice(),cand:cand.slice()});
+    applied=true;break;
+   }
+  }
+  if(!applied)return;
+ }
+}
+/* 相邻窒息排除(双子): 与某组全部候选相邻的格必非子;组内候选与其余全部相邻且剩余≥2 时它也必非子 */
+function applyAdj(lv,S,excl,groups,trace){
+ const N=lv.n;let applied=false;
+ for(const G of groups){
+  const need=K-G.cells.filter(j=>S[j]===1).length;
+  if(need<=0)continue;
+  const cand=G.cells.filter(j=>!excl[j]&&S[j]!==1);
+  if(cand.length<2)continue;
+  let rlo=-99,rhi=99,clo=-99,chi=99;
+  for(const c of cand){const r=(c/N)|0,cc=c%N;
+   if(r-1>rlo)rlo=r-1;if(r+1<rhi)rhi=r+1;
+   if(cc-1>clo)clo=cc-1;if(cc+1<chi)chi=cc+1;}
+  if(rlo>rhi||clo>chi)continue;
+  const candSet=new Set(cand);
+  for(let r=Math.max(0,rlo);r<=Math.min(N-1,rhi);r++)
+   for(let cc=Math.max(0,clo);cc<=Math.min(N-1,chi);cc++){
+    const x=r*N+cc;
+    if(excl[x]||S[x]===1)continue;
+    const inC=candSet.has(x);
+    if(inC&&(need<2||cand.length<=need))continue;
+    let adjAll=true;
+    for(const c of cand){
+     if(c===x)continue;
+     const cr=(c/N)|0,c2=c%N;
+     if(Math.abs(cr-r)>1||Math.abs(c2-cc)>1){adjAll=false;break;}
+    }
+    if(!adjAll)continue;
+    excl[x]=true;applied=true;
+    if(trace)trace.push({type:'adj',g:G.t,cell:x});
+   }
+ }
+ return applied;
+}
+function findSingle(lv,S,excl,groups){
+ for(const G of groups){
+  const need=K-G.cells.filter(j=>S[j]===1).length;
+  if(need<=0)continue;
+  const cand=G.cells.filter(j=>!excl[j]&&S[j]!==1);
+  if(cand.length===need)return{g:G.t,cells:cand};
+ }
+ return null;
+}
+function solveFrom(lv,S0,mode,pig,flt,withMarks){
+ const N=lv.n,S=S0.slice(),tot=K*N;
+ let placed=0;for(let i=0;i<N*N;i++)if(S[i]===1)placed++;
+ const steps=[],groups=buildGroups(lv,mode,flt||'full');
+ while(placed<tot){
+  const excl=padExcl(lv,S,mode,withMarks);
+  for(;;){   /* 排除推进到不动点:鸽笼与相邻窒息交替(K=1 时 adj 不参与,行为不变) */
+   let n=0;for(let j=0;j<N*N;j++)if(excl[j])n++;
+   if(pig)applyPig(lv,S,excl,groups,steps);
+   if(K>1)applyAdj(lv,S,excl,groups,steps);
+   let m=0;for(let j=0;j<N*N;j++)if(excl[j])m++;
+   if(m===n)break;
+  }
+  const hit=findSingle(lv,S,excl,groups);
+  if(!hit)break;
+  hit.cells.forEach(j=>{S[j]=1;placed++;});
+  steps.push({type:'single',g:hit.g,cells:hit.cells.slice()});
+ }
+ return{placed,steps,S};
+}
+
+/* ---- 盘面 ---- */
+function build(){
+ const lv=LV(),N=lv.n,NA=nightAlpha(N);
+ ANCH=new Set(lv.anchors);
+ scene.className='scene '+(N<=5?'n5':N===6?'n6':N<=8?'n8':N<=10?'n10':'n12');
+ dayFace.innerHTML='';nightFace.innerHTML='';
+ dayFace.style.gridTemplateColumns='repeat('+N+',1fr)';
+ nightFace.style.gridTemplateColumns='repeat('+N+',1fr)';
+ cellsD=[];cellsN=[];prev=new Array(N*N).fill(-1);
+ for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+  const d=document.createElement('div');
+  d.className='cell';d.style.setProperty('--day',dayCol(DL12.indexOf(lv.day[r][c])));
+  d._i=r*N+c;
+  dayFace.appendChild(d);cellsD[r*N+c]=d;
+ }
+ for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+  const d=document.createElement('div');
+  d.className='cell';d.style.setProperty('--ngt',nightCol(NA.indexOf(lv.night[r][c])));
+  d._i=r*N+c;
+  nightFace.appendChild(d);cellsN[r*N+c]=d;
+ }
+ dotsEl.innerHTML='';
+ for(let i=0;i<K*N;i++){const s=document.createElement('span');s.className='dot';dotsEl.appendChild(s);}
+lvlchip.textContent='第'+CN[cur]+'关 · '+N+'×'+N;
+}
+function pads(){const a=[];for(let i=0;i<LV().n*LV().n;i++)if(S[i]===1)a.push(i);return a;}
+function conflicts(){
+ const lv=LV(),N=lv.n,P=pads(),bad=new Set(),cnt={};
+ P.forEach(i=>{const r=(i/N)|0,c=i%N;
+  ['r'+r,'c'+c,'D'+lv.day[r][c],'N'+lv.night[r][c]].forEach(k=>cnt[k]=(cnt[k]||0)+1);});
+ P.forEach(i=>{const r=(i/N)|0,c=i%N;
+  if(cnt['r'+r]>K||cnt['c'+c]>K||cnt['D'+lv.day[r][c]]>K||cnt['N'+lv.night[r][c]]>K)bad.add(i);});
+ for(let a=0;a<P.length;a++)for(let b=a+1;b<P.length;b++){
+  const r1=(P[a]/N)|0,c1=P[a]%N,r2=(P[b]/N)|0,c2=P[b]%N;
+  if(Math.abs(r1-r2)<=1&&Math.abs(c1-c2)<=1){bad.add(P[a]);bad.add(P[b]);}}
+ return bad;
+}
+function clearHints(){clearTimeout(moonT);document.querySelectorAll('.cell.hint,.cell.exclh').forEach(d=>d.classList.remove('hint','exclh'));}
+function render(){
+ const lv=LV(),N=lv.n,bad=conflicts();
+ for(let i=0;i<N*N;i++){
+  const v=S[i];
+  if(v!==prev[i]){   /* 增量渲染:棋子节点保留,不重播入场动画 */
+   const r=(i/N)|0,c=i%N;
+   cellsD[i].innerHTML=(v===1?'<div class="pad"></div>':v===2?'<div class="x"></div>':'')
+    +'<span class="lbl">'+lv.day[r][c]+'</span>';
+   cellsN[i].innerHTML=(v===1?'<div class="pad"></div>':v===2?'<div class="x"></div>':'')
+    +'<span class="lbl">'+lv.night[r][c]+'</span>';
+   prev[i]=v;
+  }
+  const cls='cell'+(bad.has(i)?' bad':'');
+  cellsD[i].className=cls;cellsN[i].className=cls;
+ }
+ updateDots();updateStatus();updateUrge();
+}
+function updateDots(){
+ const lv=LV(),N=lv.n,T=K*N,P=pads(),ds=dotsEl.children;
+ for(let i=0;i<T;i++){
+  ds[i].className='dot'+(i<P.length?' on':'');
+  if(i<P.length){          /* 点亮色 = 该子所在色块颜色,随翻转切换 */
+   const p=P[i],r=(p/N)|0,c=p%N;
+   ds[i].style.background=flipped
+    ?nightCol(nightAlpha(N).indexOf(lv.night[r][c]))
+    :dayCol(DL12.indexOf(lv.day[r][c]));
+  }else ds[i].style.background='';
+ }
+}
+function updateStatus(){
+ const lv=LV(),N=lv.n,T=K*N,P=pads().length,bad=conflicts();
+ if(P===T&&bad.size===0){
+  statusEl.textContent='表里如一';statusEl.className='status ok';
+  showWin();
+ }else{
+  statusEl.textContent=bad.size?'有冲突(红圈)':'';
+  statusEl.className='status'+(bad.size?' err':'');
+ }
+}
+function tap(i){
+ if(winShown)return;
+ if(S[i]===1&&ANCH.has(i)){
+  clearHints();
+  SND.tick();
+  statusEl.textContent='这颗棋子是既定的,不可移动';
+  statusEl.className='status';
+  moonT=setTimeout(updateStatus,1500);
+  return;
+ }
+ clearHints();
+ if(S[i]===0){          /* 点空格:标 ✕ */
+  undoStack.push(S.slice());if(undoStack.length>200)undoStack.shift();
+  S[i]=2;
+  render();SND.tick();
+ }else if(S[i]===2){    /* 点 ✕:直接落子(不依赖双击时序,合并为一步撤销) */
+  S[i]=1;
+  render();SND.place();miniRipple(i);if(conflicts().has(i))SND.bad();
+ }else{
+  undoStack.push(S.slice());if(undoStack.length>200)undoStack.shift();
+  S[i]=0;                /* 点棋子:收回 */
+  render();SND.clear();
+ }
+}
+function miniRipple(i){
+ [cellsD[i],cellsN[i]].forEach(d=>{
+  const m=document.createElement('div');m.className='mrip';d.appendChild(m);
+  setTimeout(()=>m.remove(),500);
+ });
+}
+function undo(){
+ if(!undoStack.length)return;
+ S=undoStack.pop();clearHints();render();SND.ui();
+}
+window.undo=undo;
+function flip(){
+ flipped=!flipped;flips++;
+ document.getElementById('card').classList.toggle('flipped',flipped);
+ document.body.classList.toggle('deep',flipped);
+ const rp=document.getElementById('ripple');
+ rp.classList.remove('go');void rp.offsetWidth;rp.classList.add('go');
+ SND.flip();updateDots();
+ if(!document.querySelector('.cell.hint,.cell.exclh'))updateStatus();
+ updateUrge();
+}
+window.flip=flip;
+function updateUrge(){
+ const lv=LV();
+ if(lv.hf!=='both'||flipped||winShown){flipBtn.classList.remove('urge');return;}
+ const N=lv.n,T=K*N;let placed=0;for(let i=0;i<N*N;i++)if(S[i]===1)placed++;
+ if(placed>=T){flipBtn.classList.remove('urge');return;}
+ const r=solveFrom(lv,S,'day',lv.pig);
+ flipBtn.classList.toggle('urge',r.placed===placed);
+}
+
+/* ---- 提示:①视角内单候选(计数=玩家当前所见,不预支另一面) ①′跨面可排(虚线圈=翻面即可排除的格,实线圈=剩下的必放格)
+   ②鸽笼包含(实线圈候选/虚线圈排除,标✕后生效) ③相邻窒息(双子) ①″兜底教学 ④死路 ---- */
+const GK=g=>g;   /* 提示文字:区域字母与其他文字一致 */
+function findSingleH(groups,exclOf){
+ for(const G of groups){
+  const need=K-G.cells.filter(j=>S[j]===1).length;
+  if(need<=0)continue;
+  const ex=exclOf(G);
+  const cand=G.cells.filter(j=>!ex[j]&&S[j]!==1);
+  if(cand.length===need)return{g:G.t,cells:cand};
+ }
+ return null;
+}
+function pigStepH(groups,exclOf){
+ for(const G of groups){
+  const need=K-G.cells.filter(j=>S[j]===1).length;
+  if(need<=0)continue;
+  const ex=exclOf(G);
+  const cand=G.cells.filter(j=>!ex[j]&&S[j]!==1);
+  if(cand.length<need)continue;
+  const candSet=new Set(cand);
+  for(const H of groups){
+   if(H===G)continue;
+   if(H.cells.length<cand.length)continue;
+   let sub=true;
+   for(const j of cand){if(!H.cellSet.has(j)){sub=false;break;}}
+   if(!sub)continue;
+   if(K-H.cells.filter(j=>S[j]===1).length!==need)continue;
+   const exH=exclOf(H);
+   const elim=H.cells.filter(j=>!candSet.has(j)&&!exH[j]);
+   if(elim.length===0)continue;
+   return{g:G.t,h:H.t,cand:cand.slice(),elim:elim.slice()};
+  }
+ }
+ return null;
+}
+function adjStepH(lv,groups,exclOf,vCur){
+ const N=lv.n;
+ for(const G of groups){
+  const need=K-G.cells.filter(j=>S[j]===1).length;
+  if(need<=0)continue;
+  const ex=exclOf(G);
+  const cand=G.cells.filter(j=>!ex[j]&&S[j]!==1);
+  if(cand.length<2)continue;
+  let rlo=-99,rhi=99,clo=-99,chi=99;
+  for(const c of cand){const r=(c/N)|0,cc=c%N;
+   if(r-1>rlo)rlo=r-1;if(r+1<rhi)rhi=r+1;
+   if(cc-1>clo)clo=cc-1;if(cc+1<chi)chi=cc+1;}
+  if(rlo>rhi||clo>chi)continue;
+  const candSet=new Set(cand);
+  for(let r=Math.max(0,rlo);r<=Math.min(N-1,rhi);r++)
+   for(let cc=Math.max(0,clo);cc<=Math.min(N-1,chi);cc++){
+    const x=r*N+cc;
+    if(vCur[x]||S[x]===1)continue;
+    const inC=candSet.has(x);
+    if(inC&&(need<2||cand.length<=need))continue;
+    let adjAll=true;
+    for(const c of cand){
+     if(c===x)continue;
+     const cr=(c/N)|0,c2=c%N;
+     if(Math.abs(cr-r)>1||Math.abs(c2-cc)>1){adjAll=false;break;}
+    }
+    if(!adjAll)continue;
+    return{g:G.t,cell:x};
+   }
+ }
+ return null;
+}
+function hint(){
+ if(document.querySelector('.cell.hint,.cell.exclh')){clearHints();updateStatus();SND.ui();return 'off';}
+ clearHints();hintsUsed++;
+ const lv=LV(),mode=lv.hf==='day'?'day':'mix';
+ const groups=buildGroups(lv,mode,'full');
+ const NN=lv.n*lv.n;
+ const exclD=padExcl(lv,S,'day',true),exclN=padExcl(lv,S,'night',true);
+ const vCur=flipped?exclN:exclD;              /* 玩家当前视角可见的排除(✕ 已含) */
+ const mExcl=padExcl(lv,S,mode,true);         /* 求解器视角(两面同计):发现「翻面可排」格 */
+ const other=flipped?'正面':'背面';
+ const exclOf=G=>G.t[0]==='背'?exclN:G.t[0]==='正'?exclD:vCur;
+ const mark=(cells,cls)=>cells.forEach(j=>{cellsD[j].classList.add(cls);cellsN[j].classList.add(cls);});
+ /* ① 单候选:只数玩家当前视角可见的排除——报出的数字当场可验证 */
+ const hit=findSingleH(groups,exclOf);
+ if(hit){
+  mark(hit.cells,'hint');
+  const nc=hit.cells.length;
+  const ask=(hit.g[0]==='背'&&!flipped)||(hit.g[0]==='正'&&flipped)?'——翻到'+other+'看看':'';
+  statusEl.innerHTML=GK(hit.g)+'只剩这 '+nc+' 格'+(nc===1?' → 必有 1 子':' → 每格都放子')+ask;
+  statusEl.className='status hintst';
+  return hit.g+'#'+hit.cells.join(',');
+ }
+ /* 跨面可排格:求解器已排除、当前视角看不见(另一面色区放满所致) */
+ const hidden=[];
+ for(let j=0;j<NN;j++)if(mExcl[j]&&!vCur[j]&&S[j]!==1)hidden.push(j);
+ /* ①′ 点名:某组排除虚线圈格后恰成单候选——把卡点说破(不分组的面别) */
+ let mHit=null;
+ for(const G of groups){
+  const need=K-G.cells.filter(j=>S[j]===1).length;
+  if(need<=0)continue;
+  const cand=G.cells.filter(j=>!mExcl[j]&&S[j]!==1);
+  if(cand.length!==need)continue;
+  mHit={g:G.t,cells:cand,grp:G};break;
+ }
+ if(mHit){
+  const exG=exclOf(mHit.grp);
+  const candH=mHit.grp.cells.filter(j=>!exG[j]&&S[j]!==1);
+  const hid=candH.filter(j=>mHit.cells.indexOf(j)<0);
+  if(hid.length){
+   mark(mHit.cells,'hint');mark(hid,'exclh');
+   const nc=mHit.cells.length;
+   const tail=nc===1?'这 1 格必有子':' '+nc+' 格都放子';
+   const grpOther=(mHit.g[0]==='背'&&!flipped)||(mHit.g[0]==='正'&&flipped);
+   statusEl.innerHTML=grpOther
+    ?GK(mHit.g)+'还剩 '+(nc+hid.length)+' 格:虚线圈 '+hid.length+' 格的'+(flipped?'背面':'正面')+'色区已满,标 ✕'
+     +' → 翻到'+other+'看:剩下实线圈出的'+tail
+    :GK(mHit.g)+'还剩 '+(nc+hid.length)+' 格:虚线圈 '+hid.length+' 格翻到'+other+'就能排掉(色区已满)'
+     +' → 剩下实线圈出的'+tail;
+   statusEl.className='status hintst';
+   return 'flip:'+mHit.g+'#'+hid.join(',')+'>'+mHit.cells.join(',');
+  }
+ }
+ /* ② 鸽笼包含(视角内可验证) */
+ if(lv.pig){
+  const p=pigStepH(groups,exclOf);
+  if(p){
+   mark(p.cand,'hint');mark(p.elim,'exclh');
+   const rel=(p.g[0]==='背'||p.h[0]==='背')&&!flipped?'——线索在背面,翻过去看'
+    :(p.g[0]==='正'||p.h[0]==='正')&&flipped?'——线索在正面,翻回去看':'';
+   statusEl.innerHTML=GK(p.g)+'的候选(实线圈)全落在'+GK(p.h)+'内 → 其余 '+p.elim.length+' 格(虚线圈)可标 ✕'+rel;
+   statusEl.className='status hintst';
+   return 'pig:'+p.g+'>'+p.h;
+  }
+ }
+ /* ③ 相邻窒息(双子) */
+ if(K>1){
+  const a=adjStepH(lv,groups,exclOf,vCur);
+  if(a){
+   mark([a.cell],'exclh');
+   const rel=a.g[0]==='背'&&!flipped?'——线索在背面,翻过去看':a.g[0]==='正'&&flipped?'——线索在正面,翻回去看':'';
+   statusEl.innerHTML='这格与'+GK(a.g)+'的全部候选相邻——子落哪它都放不下,可标 ✕'+rel;
+   statusEl.className='status hintst';
+   return 'adj:'+a.g+'#'+a.cell;
+  }
+ }
+ /* ①″ 兜底教学:②③都无解时,虚线圈标出全部「翻面可排」格 */
+ if(hidden.length){
+  mark(hidden,'exclh');
+  statusEl.innerHTML='虚线圈 '+hidden.length+' 格翻到'+other+'就能排掉(色区已放满) → 标 ✕ 后继续';
+  statusEl.className='status hintst';
+  return 'flip:#'+hidden.join(',');
+ }
+ statusEl.textContent='此路推不动:检查 ✕ 是否标错,或撤销/重置';
+ statusEl.className='status err';
+ return 'dead';
+}
+window.hint=hint;
+
+
+/* ---- 通关 / 选关 ---- */
+function drawEmblem(){
+ const lv=LV(),N=lv.n,nab=nightAlpha(N);
+ const c=N<=6?15:N<=8?12:N<=10?10:8,gap=N>6?1:2;
+ const emb=document.getElementById('emblem');
+ emb.innerHTML='';
+ const mk=(dark)=>{
+  const b=document.createElement('div');b.className='mb '+(dark?'mbn':'mbd');
+  b.style.gridTemplateColumns='repeat('+N+','+c+'px)';
+  b.style.gridTemplateRows='repeat('+N+','+c+'px)';
+  b.style.gap=gap+'px';
+  for(let r=0;r<N;r++)for(let cc=0;cc<N;cc++){
+   const d=document.createElement('div');d.className='mbc';
+   d.style.background=dark?nightCol(nab.indexOf(lv.night[r][cc])):dayCol(DL12.indexOf(lv.day[r][cc]));
+   if(S[r*N+cc]===1){const q=document.createElement('div');q.className='mbp';d.appendChild(q);}
+   b.appendChild(d);}
+  const k=document.createElement('div');k.className='mbk';k.textContent='✓';b.appendChild(k);
+  return b;};
+ emb.appendChild(mk(false));
+ const ar=document.createElement('div');ar.className='mbar';ar.textContent='⇄';emb.appendChild(ar);
+ emb.appendChild(mk(true));
+}
+function showWin(){
+ if(winShown)return;
+ winShown=true;
+ const dn=MODE2?PST.done2:PST.done;
+ dn[cur]=true;savePST();
+ drawEmblem();
+ const sec=Math.max(1,Math.round((Date.now()-startTime)/1000));
+ const last=cur===(MODE2?LEVELS2:LEVELS).length-1;
+document.getElementById('winTitle').textContent=last?'全部通关':'已通关';
+document.getElementById('winSub').textContent='第'+CN[cur]+'关 · '+(last?'全部完成':'完成');
+ document.getElementById('winStats').textContent='用时 '+(sec/60|0)+':'+String(sec%60).padStart(2,'0')
+  +' · 翻转 '+flips+' 次 · 提示 '+hintsUsed+' 次';
+ document.getElementById('nextBtn').textContent=last?'回到第一关':'下一关';
+ document.getElementById('win').classList.add('show');
+ SND.win();
+}
+function nextLevel(){
+ document.getElementById('win').classList.remove('show');
+ if(cur===(MODE2?LEVELS2:LEVELS).length-1)load(0);else load(cur+1);
+}
+window.nextLevel=nextLevel;
+function reset(){
+ const lv=LV();
+ S=new Array(lv.n*lv.n).fill(0);
+ lv.anchors.forEach(j=>S[j]=1);
+ undoStack=[];winShown=false;
+ startTime=Date.now();flips=0;hintsUsed=0;
+ document.getElementById('win').classList.remove('show');
+ clearHints();render();
+}
+window.reset=reset;
+function load(i){
+ cur=i;
+  if(flipped){flipped=false;
+   document.getElementById('card').classList.remove('flipped');
+   document.body.classList.remove('deep');}
+  SND.ui();
+ build();reset();
+ renderLgrid();
+}
+window.load=load;
+function openLsel(){renderLgrid();document.getElementById('lsel').classList.add('show');SND.ui();}
+window.openLsel=openLsel;
+function closeLsel(){document.getElementById('lsel').classList.remove('show');}
+window.closeLsel=closeLsel;
+function setMode(m2){
+ MODE2=m2;K=m2?2:1;
+ document.getElementById('mtMain').classList.toggle('on',!m2);
+ document.getElementById('mt2').classList.toggle('on',m2);
+  if(flipped){flipped=false;
+   document.getElementById('card').classList.remove('flipped');
+   document.body.classList.remove('deep');}
+  const LS=m2?LEVELS2:LEVELS,dn=m2?PST.done2:PST.done;
+ let s=0;while(s<LS.length-1&&dn[s])s++;
+ cur=s;
+ SND.ui();
+ build();reset();
+ if(m2&&!PST.tut2){PST.tut2=true;savePST();const m2c=m2;setTimeout(()=>{if(MODE2===m2c&&!document.getElementById('tut').classList.contains('show'))openTut();},1500);}
+}
+window.setMode=setMode;
+
+/* ---- 玩法图解 ---- */
+function tBoard(rows,dark,pads,marks,ring){
+ const b=document.createElement('div');b.className='tboard'+(dark?' dark':'');
+ const n=rows[0].length;
+ if(n>=8){b.classList.add('s');b.style.gridTemplateColumns='repeat('+n+',17px)';}
+ else b.style.gridTemplateColumns='repeat('+n+',25px)';
+ const NA=nightAlpha(rows.length);
+ rows.forEach((row,r)=>{[...row].forEach((ch,c)=>{
+  const d=document.createElement('div');d.className='cell';
+  d.style.background=dark?nightCol(NA.indexOf(ch)):dayCol(DL12.indexOf(ch));
+  if(pads&&pads.some(p=>p[0]===r&&p[1]===c)){const p=document.createElement('div');p.className='pad';d.appendChild(p);}
+  if(marks&&marks.some(m=>m[0]===r&&m[1]===c)){const x=document.createElement('div');x.className='x';d.appendChild(x);}
+  if(ring){const rs=Array.isArray(ring[0])?ring:[ring];
+   if(rs.some(p=>p[0]===r&&p[1]===c))d.classList.add('tring');}
+  b.appendChild(d);});});
+ return b;
+}
+let demoTimers=[];
+function stopDemos(){demoTimers.forEach(clearTimeout);demoTimers=[];}
+function dragDemo(board,row){
+ const cells=[...board.children].filter(d=>d.classList.contains('cell'));
+ const n=Math.round(Math.sqrt(cells.length));
+ const rc=cells.slice(row*n,row*n+n);
+ const fg=document.createElement('div');fg.className='dfg';board.appendChild(fg);
+ const P=i=>{const c=rc[i];return [c.offsetLeft+c.offsetWidth/2-9,c.offsetTop+c.offsetHeight/2-9];};
+ const cycle=k=>{
+  if(!board.isConnected)return;
+  if(k===0){
+   fg.style.transition='opacity .3s';fg.style.left=P(0)[0]+'px';fg.style.top=P(0)[1]+'px';
+   rc.forEach(c=>{const x=c.querySelector('.x');if(x)x.remove();});
+   demoTimers.push(setTimeout(()=>{fg.style.opacity='1';},80));
+   demoTimers.push(setTimeout(()=>cycle(1),420));return;
+  }
+  if(k<=rc.length){
+   const i=k-1;
+   fg.style.transition='left 370ms linear,opacity .3s';fg.style.left=P(i)[0]+'px';
+   demoTimers.push(setTimeout(()=>{
+    const x=document.createElement('div');x.className='x pop';rc[i].appendChild(x);
+   },330));
+   demoTimers.push(setTimeout(()=>cycle(k+1),430));return;
+  }
+  demoTimers.push(setTimeout(()=>{
+   rc.forEach(c=>{const x=c.querySelector('.x');if(x)x.classList.add('fade');});
+   fg.style.opacity='0';
+  },1400));
+  demoTimers.push(setTimeout(()=>cycle(0),2100));
+ };
+ cycle(0);
+}
+function buildTut(){
+ const w=document.getElementById('tutWrap');w.innerHTML='';
+ const T_DAY=['CCAAA','CDAEB','CDAEB','DDEEB','DDEBB'];
+ const T_NGT=['SSPPP','SSPQQ','RRPQQ','RRTQQ','TTTTT'];
+ const SOL=[[0,2],[1,0],[2,3],[3,1],[4,4]];
+ const sec=k=>{const d=document.createElement('div');d.className='tsec';d.style.display=k===0?'':'none';w.appendChild(d);return d;};
+ const s0=sec(0),s1=sec(1);
+  const panel=(host,title,boards,cap,mode)=>{
+   const d=document.createElement('div');d.className='tpanel'+(mode==='wide'?' wide':'');
+   if(mode==='wide'){
+    const row=document.createElement('div');row.className='trow';
+    boards.forEach(b=>row.appendChild(b));d.appendChild(row);
+   }else if(mode==='vert'){
+    const col=document.createElement('div');col.className='tcol';
+    boards.forEach(b=>col.appendChild(b));d.appendChild(col);
+   }else boards.forEach(b=>d.appendChild(b));
+  const txt=document.createElement('div');txt.className='txt';
+  const h=document.createElement('h4');h.textContent=title;txt.appendChild(h);
+  const c=document.createElement('div');c.className='tcap';c.innerHTML=cap;txt.appendChild(c);
+  d.appendChild(txt);
+  host.appendChild(d);};
+  panel(s0,'目标:两个面同时成立',
+   [tBoard(T_DAY,false,SOL),tBoard(T_NGT,true,SOL)],
+   '上为正面,下为背面,两面共用同一批格子<br>每行 1 子,每列 1 子,同色区恰 1 子,任两子<b>不相邻</b><br>所有条件都要<b>在两个面同时成立</b>',
+   'vert');
+ panel(s0,'既定棋子',
+  [tBoard(T_DAY,false,[[1,0]])],
+  '这颗棋子是开局自带的,<b>不可移动</b>——两面共用<br>每一关都从它出发,开始第一轮排除');
+  panel(s0,'不相邻:四周 8 格',
+   [tBoard(T_DAY,false,[[2,2]],[[1,1],[1,2],[1,3],[2,1],[2,3],[3,1],[3,2],[3,3]])],
+   '落下一颗子,它的<b>四周 8 格</b>都不能再放子<br>上下左右,连同四个斜角,都算相邻');
+ const demo=tBoard(T_DAY,false,[[1,3]],[[1,0],[3,0],[3,1],[3,2]]);
+  panel(s0,'操作:点 / 拖',
+   [demo],
+   '点一下空格标 ✕,<b>再点一下落子</b>;点一下棋子收回<br>按住拖动,可以一笔画出一排 ✕<br>「撤销」回退一步,「重置」清盘重来,卡住点「提示」');
+ dragDemo(demo,2);
+  panel(s1,'放一颗,排一片',
+   [tBoard(T_DAY,false,[[2,3]],[[2,0],[2,1],[2,2],[2,4],[0,3],[1,3],[3,3],[4,3],[3,2],[4,2],[1,2],[1,4],[3,4]])],
+   '这颗子落下,出局 <b>13 格</b>:同行 4 格,同列 4 格,同色区 4 格,四周 8 格,重叠的只算一次<br>排除铺开后,只剩 1 格的行或列会自己浮出来,下一颗往往就是它');
+  panel(s1,'鸽笼(包含排除)',
+   [tBoard(T_DAY,false,[[1,0]],[[0,0],[0,1],[2,0],[1,2],[2,2]],[[0,2],[0,3],[0,4]])],
+   '黄色区已有 1 颗,放满了 → 黄色区其余格全部 ✕;第 1 行的候选只剩圈出的 3 格<br>这 3 格<b>全在红色区</b>,第 1 行与红色区都恰差 1 颗<br>→ 红色区这一颗必落在第 1 行,红色区其余 2 格 ✕ 出局');
+  panel(s1,'两面重合',
+   [tBoard(['CCAAA','CCAAA','DDBBB','DDBBB','EEBBB'],false,[[3,4]],[[3,0],[3,1]],[[2,0],[2,1]]),
+    tBoard(['SSPPP','SSPPP','SSQQQ','RRQQQ','RRQQQ'],true,[[3,4]],[[0,0],[0,1],[1,0],[1,1]],[[2,0],[2,1]])],
+   '开局子占了第 4 行 → 正面<b>绿色区</b>只剩圈出的 2 格,必落其中一颗<br>翻到背面,这 2 格<b>同在绿色区</b>——一颗子把两面的绿色区一起填满<br>→ 背面绿色区其余 4 格,全部 ✕ 出局',
+   'vert');
+}
+function openTut(){
+ stopDemos();
+ if(MODE2)buildTut2();else buildTut();
+ document.getElementById('ttabB').style.display=MODE2?'none':'';
+ tutTab(0);
+document.getElementById('tutTitle').textContent='怎 么 玩';
+ document.getElementById('tut').classList.add('show');SND.ui();
+}
+window.openTut=openTut;
+function closeTut(){stopDemos();document.getElementById('tut').classList.remove('show');}
+window.closeTut=closeTut;
+function tutTab(k){
+ document.getElementById('ttabA').classList.toggle('on',k===0);
+ document.getElementById('ttabB').classList.toggle('on',k===1);
+ document.querySelectorAll('#tutWrap .tsec').forEach((s,idx)=>s.style.display=idx===k?'':'none');
+ const tb=document.querySelector('.tut .tbody');if(tb)tb.scrollTop=0;
+}
+window.tutTab=tutTab;
+function buildTut2(){
+ const w=document.getElementById('tutWrap');
+ w.innerHTML='';
+ const D9=["GGGCEEEAB","GGGCEEEAA","HGGCEEAAA","HCCCIIIAA","HIIIIIHHH","BIIIFIIHG","BBAAFFEHG","BDDAFGGGG","BDDDDDDGG"];
+ const SOL2=[[0,3],[0,8],[1,1],[1,5],[2,3],[2,7],[3,0],[3,5],[4,2],[4,7],[5,0],[5,4],[6,2],[6,6],[7,4],[7,8],[8,1],[8,6]];
+ const IPAD=[[3,5],[4,2]];
+ const IMARK=[[3,4],[3,6],[4,1],[4,3],[4,4],[4,5],[5,1],[5,2],[5,3],[5,5],[5,6]];
+ const s0=document.createElement('div');s0.className='tsec';
+ w.appendChild(s0);
+ const panel=(host,title,boards,cap,wide)=>{
+  const d=document.createElement('div');d.className='tpanel'+(wide?' wide':'');
+  if(wide){
+   const row=document.createElement('div');row.className='trow';
+   boards.forEach(b=>row.appendChild(b));d.appendChild(row);
+  }else boards.forEach(b=>d.appendChild(b));
+  const txt=document.createElement('div');txt.className='txt';
+  const h=document.createElement('h4');h.textContent=title;txt.appendChild(h);
+  const c=document.createElement('div');c.className='tcap';c.innerHTML=cap;txt.appendChild(c);
+  d.appendChild(txt);
+  host.appendChild(d);};
+  panel(s0,'目标:每处 2 颗',
+   [tBoard(D9,false,SOL2)],
+  '一盘完成的双子:每行 2,每列 2,每个色区 2<br>除此之外,规则与操作都和单子完全相同');
+  panel(s0,'分离的同色块',
+   [tBoard(['AAABB','CCCBB','AAABB','CCCBB','CCCBB'],false,[[0,0],[0,2]],null,[[0,0],[0,1],[0,2],[2,0],[2,1],[2,2]])],
+   '同一种颜色被隔开,仍然算<b>同一个区</b>,数量按全区合计<br>圈出的 6 格是一个区,放 2 颗即可——两颗都落在上面这块(如图)也完全合规<br>不要求每块各放一颗,只要全区数量对、任两子不相邻');
+  panel(s0,'区满才排除',
+  [tBoard(D9,false,IPAD,IMARK)],
+  '粉色区已放满 2 颗 → 其余粉格<b>整片出局</b>,可标 ✕<br>单子放 1 颗就出局;双子要<b>放满 2 颗</b>,全区才出局');
+}
+function renderLgrid(){
+const g=document.getElementById('lgrid');g.innerHTML='';
+const LS=MODE2?LEVELS2:LEVELS,dn=MODE2?PST.done2:PST.done;
+const WSZ={5:13,6:11,7:9,8:8,9:7,10:6,11:5.5,12:5};
+ LS.forEach((lv,i)=>{
+  const b=document.createElement('button');
+  b.className='ltile'+(dn[i]?' done':'')+(i===cur?' cur':'');
+  const mb=document.createElement('div');mb.className='wmb';
+  const n=lv.n,sz=WSZ[n]||6;
+  mb.style.gridTemplateColumns='repeat('+n+','+sz+'px)';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+   const d=document.createElement('i');
+   d.style.background=dayCol(DL12.indexOf(lv.day[r][c]));
+   if(lv.anchors.indexOf(r*n+c)>=0){const p=document.createElement('b');d.appendChild(p);}
+   mb.appendChild(d);}
+  b.appendChild(mb);
+  const cap=document.createElement('div');cap.className='wcap';cap.textContent='第'+(i+1)+'关';
+  b.appendChild(cap);
+  b.onclick=()=>{closeLsel();if(i!==cur)load(i);};
+  g.appendChild(b);
+ });
+}
+function bgmWanted(){return PST.bgm!==false}
+function toggleBgm(){PST.bgm=!bgmWanted();savePST();
+ if(bgmWanted())bgmStart();else bgmStop();updateBgmBtn();}
+function updateBgmBtn(){const b=document.getElementById('bgmBtn');
+ if(b)b.classList.toggle('off',!bgmWanted());}
+window.toggleBgm=toggleBgm;
+function toggleSound(){
+ PST.sound=!PST.sound;savePST();
+ document.getElementById('sndBtn').textContent=PST.sound?'🔊':'🔇';
+ if(PST.sound)SND.ui();
+}
+window.toggleSound=toggleSound;
+
+/* ---- 指针交互:单击循环 + 拖动画✕/擦✕(横竖四方向,一次拖动一次撤销) ---- */
+let drag=null;
+function pDown(e){
+ if(winShown)return;
+ if(drag)return;
+ const t=e.target.closest('.cell');if(!t)return;
+ const i=t._i;if(i===undefined)return;
+ e.preventDefault();
+ try{t.setPointerCapture(e.pointerId);}catch(err){}
+ const rc=t.getBoundingClientRect(),N=LV().n;
+ drag={i0:i,r0:(i/N)|0,c0:i%N,x0:rc.left+rc.width/2,y0:rc.top+rc.height/2,
+  pitch:rc.width,dir:null,erase:S[i]===2,piece:S[i]===1};
+}
+function pMove(e){
+ if(!drag)return;
+ const N=LV().n,dx=e.clientX-drag.x0,dy=e.clientY-drag.y0;
+ if(Math.hypot(dx,dy)<drag.pitch*0.45)return;
+ if(!drag.dir){
+  const q=((Math.round(Math.atan2(dy,dx)/(Math.PI/2))%4)+4)%4;
+  const dirs=[[0,1],[1,0],[0,-1],[-1,0]];
+  drag.dir=dirs[q];
+  if(!drag.piece){
+   undoStack.push(S.slice());if(undoStack.length>200)undoStack.shift();
+   clearHints();
+  }
+ }
+ if(drag.piece)return;
+ const proj=dx*drag.dir[1]+dy*drag.dir[0];
+ let steps=Math.round(proj/drag.pitch);
+ if(steps<0)steps=0;if(steps>N-1)steps=N-1;
+ let changed=false;
+ for(let s=0;s<=steps;s++){
+  const rr=drag.r0+drag.dir[0]*s,cc=drag.c0+drag.dir[1]*s;
+  if(rr<0||rr>=N||cc<0||cc>=N)break;
+  const j=rr*N+cc;
+  if(drag.erase){if(S[j]===2){S[j]=0;changed=true;}}
+  else if(S[j]===0){S[j]=2;changed=true;}
+ }
+ if(changed){render();SND.tick();}
+}
+function pUp(){
+ if(!drag)return;
+ const d=drag;drag=null;
+ if(!d.dir)tap(d.i0);          /* 未拖动 = 点击:空→✕→子→空 三态循环 */
+}
+function pCancel(){drag=null;}
+[dayFace,nightFace].forEach(f=>{
+ f.addEventListener('pointerdown',pDown);
+ f.addEventListener('pointermove',pMove);
+ f.addEventListener('pointerup',pUp);
+ f.addEventListener('pointercancel',pCancel);
+});
+
+/* ---- 回归钩子 ---- */
+window.__selftest=function(){
+ return LEVELS.map((lv,i)=>{
+  const N=lv.n,S0=new Array(N*N).fill(0);
+  lv.anchors.forEach(j=>S0[j]=1);
+  const mix=solveFrom(lv,S0,'mix',lv.pig);
+  const mnp=solveFrom(lv,S0,'mix',false);
+  const d=solveFrom(lv,S0,'day',lv.pig);
+  const nt=solveFrom(lv,S0,'night',lv.pig);
+  const okBoard=lv.sol.every((c,r)=>mix.S[r*N+c]===1);
+  return{id:i+1,n:N,k:lv.anchors.length,mix:mix.placed,mixNopig:mnp.placed,
+   day:d.placed,night:nt.placed,
+   pigs:mix.steps.filter(s=>s.type==='pig').length,
+   ok:mix.placed===N&&okBoard,
+   chain:mix.steps.filter(s=>s.type==='single').map(s=>s.g).join(',')};
+ });
+};
+window.__selftest2=function(){
+ const old=K;K=2;
+ try{
+  return LEVELS2.map((lv,i)=>{
+   const N=lv.n,tot=2*N,S0=new Array(N*N).fill(0);
+   lv.anchors.forEach(j=>S0[j]=1);
+   const mix=solveFrom(lv,S0,'mix',lv.pig);
+   const d=solveFrom(lv,S0,'day',lv.pig);
+   const nt=solveFrom(lv,S0,'night',lv.pig);
+   const okBoard=lv.sol.every((cs,r)=>cs.every(c=>mix.S[r*N+c]===1));
+   return{id:i+1,n:N,ac:lv.anchors.length,mix:mix.placed,day:d.placed,night:nt.placed,
+    pigs:mix.steps.filter(s=>s.type==='pig').length,
+    ok:mix.placed===tot&&okBoard&&d.placed<tot&&nt.placed<tot};
+  });
+ }finally{K=old;}
+};
+
+document.getElementById('sndBtn').textContent=PST.sound?'🔊':'🔇';
+updateBgmBtn();
+document.addEventListener('pointerdown',function bgmFirst(){
+ document.removeEventListener('pointerdown',bgmFirst);
+ if(PST.bgm!==false)bgmStart();},{capture:true});
+let start=0;while(start<49&&PST.done[start])start++;
+cur=start;
+build();reset();
+if(!PST.tut){PST.tut=true;savePST();setTimeout(()=>{if(!document.getElementById('tut').classList.contains('show'))openTut();},1500);}
+</script>
+</body>
+</html>
