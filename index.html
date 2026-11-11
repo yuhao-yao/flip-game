@@ -52,10 +52,12 @@ body.deep .lvlchip{background:#2C2C2E;border-color:#3A3A3C;color:#F2F2F2}
  .face{display:grid;gap:3px;padding:10px;border-radius:24px;
   backface-visibility:hidden;-webkit-backface-visibility:hidden}
  .face.day{background:#FFFFFF;box-shadow:0 2px 12px rgba(0,0,0,.06)}
- .face.night{position:absolute;inset:0;transform:rotateX(180deg);
+ .face.night{position:absolute;inset:0;transform:rotateX(180deg);visibility:hidden;
   background:#1C1C1E;box-shadow:0 8px 32px rgba(0,0,0,.6);pointer-events:none}
  .card.flipped .face.night{pointer-events:auto}
  .card.flipped .face.day{pointer-events:none}
+ .card.showN .face.night{visibility:visible}
+ .card.showN .face.day{visibility:hidden}
  .cell{aspect-ratio:1;position:relative;transition:transform .08s;cursor:pointer;
   border-radius:14%;touch-action:none}
  .cell:active{transform:scale(.96)}
@@ -363,7 +365,7 @@ const statusEl=document.getElementById('status');
 const lvlchip=document.getElementById('lvlchip'),dotsEl=document.getElementById('dots');
 const flipBtn=document.getElementById('flipBtn');
 let S=[],prev=[],cellsD=[],cellsN=[],flipped=false,undoStack=[];
-let startTime=0,flips=0,hintsUsed=0,winShown=false,moonT=0;
+let startTime=0,flips=0,hintsUsed=0,winShown=false,moonT=0,flipVisT=0;
 let ANCH=new Set();
 
 /* ---- 音效:WebAudio 合成,零外部资源 ---- */
@@ -722,9 +724,15 @@ function undo(){
  S=undoStack.pop();clearHints();render();SND.ui();
 }
 window.undo=undo;
+function syncFace(){
+ clearTimeout(flipVisT);
+ const c=document.getElementById('card');
+ c.classList.toggle('flipped',flipped);
+ flipVisT=setTimeout(()=>{c.classList.toggle('showN',flipped);},300);   /* 半程(两面均侧对)切显隐——iOS backface 失效兜底 */
+}
 function flip(){
  flipped=!flipped;flips++;
- document.getElementById('card').classList.toggle('flipped',flipped);
+ syncFace();
  document.body.classList.toggle('deep',flipped);
  const rp=document.getElementById('ripple');
  rp.classList.remove('go');void rp.offsetWidth;rp.classList.add('go');
@@ -955,7 +963,7 @@ window.reset=reset;
 function load(i){
  cur=i;
   if(flipped){flipped=false;
-   document.getElementById('card').classList.remove('flipped');
+   syncFace();
    document.body.classList.remove('deep');}
   SND.ui();
  build();reset();
@@ -971,7 +979,7 @@ function setMode(m2){
  document.getElementById('mtMain').classList.toggle('on',!m2);
  document.getElementById('mt2').classList.toggle('on',m2);
   if(flipped){flipped=false;
-   document.getElementById('card').classList.remove('flipped');
+   syncFace();
    document.body.classList.remove('deep');}
   const LS=m2?LEVELS2:LEVELS,dn=m2?PST.done2:PST.done;
  let s=0;while(s<LS.length-1&&dn[s])s++;
