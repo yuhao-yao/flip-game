@@ -18,6 +18,10 @@ html::-webkit-scrollbar{width:0;height:0;display:none}
  body.deep::before{opacity:0}
  body.deep::after{opacity:1}
  body.deep{color:#F5F5F7}
+ #splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#F5F5F7;z-index:99;transition:opacity .4s}
+ #splash span{font-size:32px;font-weight:600;letter-spacing:8px;color:#1D1D1F;animation:spl 1.8s ease-in-out infinite}
+ @keyframes spl{0%,100%{opacity:1}50%{opacity:.3}}
+ body:not(.boot) #splash{opacity:0;pointer-events:none}
  .topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
  h1{font-size:19px;font-weight:600;letter-spacing:2px;color:#1D1D1F;transition:color .8s}
  body.deep h1{color:#F5F5F7}
@@ -221,7 +225,8 @@ body.deep .dot.on{box-shadow:0 0 0 1.5px rgba(255,255,255,.45)}
   background:#0A84FF;color:#FFFFFF;font-size:13.5px;font-weight:600}
 </style>
 </head>
-<body>
+<body class="boot">
+  <div id="splash"><span>FLIP</span></div>
   <div class="topbar">
    <h1>FLIP</h1>
    <div class="mtabs" id="mtabs" title="单子:每区 1 子(50 关) / 双子:每区 2 子(20 关)">
@@ -1265,7 +1270,7 @@ document.addEventListener('pointerdown',function bgmFirst(){
 let start=0;while(start<49&&PST.done[start])start++;
 cur=start;
 build();reset();
-if(!PST.tut){PST.tut=true;savePST();setTimeout(()=>{if(!document.getElementById('tut').classList.contains('show'))openTut();},1500);}
+document.body.classList.remove('boot');if(!PST.tut){PST.tut=true;savePST();setTimeout(()=>{if(!document.getElementById('tut').classList.contains('show'))openTut();},1500);}
 </script>
 </body>
 </html>
